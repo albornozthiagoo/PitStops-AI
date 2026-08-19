@@ -1,44 +1,34 @@
-// ui/lib/services/vehiculos.ts
-import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { prisma } from "@/lib/prisma";
+import type { Vehiculo, Prioridad, EstadoVehiculo } from "@prisma/client";
 
-// Tipo de retorno inferido si en el futuro agregas relaciones
-export type VehiculoConRelaciones = Prisma.PromiseReturnType<typeof getVehiculos>[number];
+// Server-only: este archivo asume que corre dentro de un Server Component
+// o Route Handler. Nunca se importa desde un componente "use client".
 
-// 1. Obtener todos los vehículos
-export async function getVehiculos() {
+export async function getVehiculos(): Promise<Vehiculo[]> {
   try {
-    const vehiculos = await prisma.vehiculo.findMany({
-      orderBy: { createdAt: 'desc' },
-      // include: { cliente: true, taller: true },
+    return await prisma.vehiculo.findMany({
+      orderBy: { updatedAt: "desc" },
     });
-    return vehiculos;
   } catch (error) {
-    console.error('Error al obtener vehículos:', error);
-    throw new Error('No se pudieron cargar los vehículos');
+    // Logueá el error real ANTES de decidir qué hacer con él — así en los
+    // logs de Vercel/servidor ves la causa concreta (conexión caída,
+    // credencial mala, tabla inexistente) en vez de un mensaje genérico.
+    console.error("[getVehiculos] Error consultando la base:", error);
+
+    // Re-lanzamos con un mensaje claro para el usuario, pero conservamos
+    // la causa original (`cause`) para no perderla en el boundary de error.
+    throw new Error("No se pudieron cargar los vehículos", { cause: error });
   }
 }
 
-// 2. Crear un nuevo vehículo usando el tipo autogenerado por Prisma
-export async function createVehiculo(data: Prisma.VehiculoUncheckedCreateInput) {
-  try {
-    return await prisma.vehiculo.create({
-      data,
-    });
-  } catch (error) {
-    console.error('Error al crear vehículo:', error);
-    throw new Error('No se pudo crear el vehículo');
-  }
-}
-
-// 3. Eliminar un vehículo por su ID
-export async function deleteVehiculo(id: string) {
-  try {
-    return await prisma.vehiculo.delete({
-      where: { id },
-    });
-  } catch (error) {
-    console.error('Error al eliminar vehículo:', error);
-    throw new Error('No se pudo eliminar el vehículo');
-  }
+export async function getVehiculoByPatente(patente: string) {
+  return prisma.vehiculo.findUnique({
+    where: { patente },
+    include: {
+      cliente: true,
+      conversaciones: { include: { mensajes: true } },
+      preOts: { include: { hipotesis: true, herramientas: true } },
+      ordenes: true,
+    },
+  });
 }
