@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    @apply bg-graphite-950 text-text-md font-body;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4 {
+    @apply font-display text-text-hi;
+    margin: 0;
+    letter-spacing: 0.01em;
+  }
+  ::selection {
+    background: rgba(255, 106, 0, 0.35);
+    color: #eef0f1;
+  }
+  :focus-visible {
+    outline: 2px solid #ff6a00;
+    outline-offset: 2px;
+  }
+}
+
+/* ============================================================
+   Lenguaje de formas: cortes diagonales de chapa.
+   No usamos border-radius en ningún componente de superficie.
+   ============================================================ */
+@layer utilities {
+  .clip-cut {
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  }
+  .clip-cut-lg {
+    clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+  }
+  .clip-cut-sm {
+    clip-path: polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px);
+  }
+  .clip-btn {
+    clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  }
+  .clip-badge {
+    clip-path: polygon(5px 0, 100% 0, 100% 100%, 0 100%, 0 5px);
+  }
+  .clip-bubble-user {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+  .clip-bubble-sys {
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+  }
+
+  /* Textura de fondo tipo rejilla hexagonal, muy sutil */
+  .hex-texture {
+    background-image:
+      linear-gradient(30deg, #6b7280 1px, transparent 1px),
+      linear-gradient(150deg, #6b7280 1px, transparent 1px),
+      linear-gradient(90deg, #6b7280 1px, transparent 1px);
+    background-size: 44px 76px;
+    opacity: 0.05;
+  }
+
+  /* Remaches / bulones en las esquinas de un módulo */
+  .rivets {
+    position: relative;
+  }
+  .rivets::before,
+  .rivets::after {
+    content: "";
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #9aa1a9, #3a4046 65%, #17191c);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+  }
+  .rivets::before {
+    top: 7px;
+    left: 7px;
+  }
+  .rivets::after {
+    bottom: 7px;
+    right: 7px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-scan,
+  .animate-pulse2 {
+    animation: none !important;
+  }
+}

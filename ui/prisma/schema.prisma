@@ -1,0 +1,221 @@
+// ============================================================
+// PitStop AI — Prisma schema
+// Mapeo directo de lib/types.ts a tablas reales. Los nombres de
+// campo se mantienen en español para calzar 1:1 con el frontend
+// y no tener que traducir en cada route handler.
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------- Enums ----------------
+
+enum Prioridad {
+  CRITICA
+  MEDIA
+  BAJA
+}
+
+enum EstadoVehiculo {
+  DIAGNOSTICANDO
+  EN_COLA
+  COMPLETADO
+}
+
+enum AutorMensaje {
+  TECNICO
+  SISTEMA
+}
+
+enum RolTecnico {
+  TECNICO
+  SUPERVISOR
+  ADMIN
+}
+
+// ---------------- Taller / usuarios ----------------
+
+model Taller {
+  id        String   @id @default(cuid())
+  nombre    String
+  direccion String?
+  createdAt DateTime @default(now())
+
+  tecnicos   Tecnico[]
+  vehiculos  Vehiculo[]
+
+  @@map("talleres")
+}
+
+model Tecnico {
+  id            String     @id @default(cuid())
+  legajo        String     @unique
+  nombre        String
+  email         String     @unique
+  passwordHash  String
+  iniciales     String // "MG" — para el avatar del topbar
+  rol           RolTecnico @default(TECNICO)
+  createdAt     DateTime   @default(now())
+
+  taller        Taller     @relation(fields: [tallerId], references: [id])
+  tallerId      String
+
+  conversaciones Conversacion[]
+  otsAprobadas   OrdenTrabajo[] @relation("AprobadaPor")
+
+  @@map("tecnicos")
+}
+
+// ---------------- Cliente / vehículo ----------------
+
+model Cliente {
+  id        String   @id @default(cuid())
+  nombre    String
+  telefono  String?
+  email     String?
+  createdAt DateTime @default(now())
+
+  vehiculos Vehiculo[]
+
+  @@map("clientes")
+}
+
+model Vehiculo {
+  id            String         @id @default(cuid())
+  patente       String         @unique
+  vin           String         @unique
+  modelo        String // ej. "VW Amarok 2021"
+  bahia         String? // ej. "B-02", null si no está en el taller
+  kilometraje   Int
+  sintoma       String // síntoma principal actual, se limpia al completar la OT
+  prioridad     Prioridad      @default(MEDIA)
+  estado        EstadoVehiculo @default(EN_COLA)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  cliente       Cliente        @relation(fields: [clienteId], references: [id])
+  clienteId     String
+
+  taller        Taller         @relation(fields: [tallerId], references: [id])
+  tallerId      String
+
+  conversaciones Conversacion[]
+  preOts         PreOT[]
+  ordenes        OrdenTrabajo[]
+
+  @@index([tallerId, estado])
+  @@map("vehiculos")
+}
+
+// ---------------- Chat de prediagnóstico ----------------
+
+model Conversacion {
+  id        String         @id @default(cuid())
+  titulo    String // ej. "VW Amarok · B-02"
+  subtitulo String // ej. "Ruido metálico en frenado"
+  estado    EstadoVehiculo @default(EN_COLA)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  vehiculo   Vehiculo @relation(fields: [vehiculoId], references: [id])
+  vehiculoId String
+
+  tecnico    Tecnico  @relation(fields: [tecnicoId], references: [id])
+  tecnicoId  String
+
+  mensajes Mensaje[]
+  preOt    PreOT?
+
+  @@index([vehiculoId])
+  @@map("conversaciones")
+}
+
+model Mensaje {
+  id        String       @id @default(cuid())
+  autor     AutorMensaje
+  texto     String       @db.Text
+  tag       String? // ej. "PitStop AI · analizando patrón"
+  scanPct   Int? // progreso del escaneo mostrado en el bubble, 0-100
+  createdAt DateTime     @default(now())
+
+  conversacion   Conversacion @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
+  conversacionId String
+
+  @@index([conversacionId, createdAt])
+  @@map("mensajes")
+}
+
+// ---------------- Pre-OT / diagnóstico ----------------
+
+model PreOT {
+  id                String    @id @default(cuid())
+  codigo            String    @unique // ej. "PRE-OT #4471", mostrado en el documento
+  generada          DateTime  @default(now())
+  prioridad         Prioridad
+  sintomaPrincipal  String    @db.Text
+  tiempoEstimado    String // ej. "45–60 min" — texto libre, no siempre es un rango numérico limpio
+  aprobada          Boolean   @default(false)
+
+  vehiculo    Vehiculo @relation(fields: [vehiculoId], references: [id])
+  vehiculoId  String
+
+  conversacion   Conversacion @relation(fields: [conversacionId], references: [id])
+  conversacionId String       @unique
+
+  hipotesis   Hipotesis[]
+  herramientas HerramientaSugerida[]
+  ordenTrabajo OrdenTrabajo?
+
+  @@index([vehiculoId])
+  @@map("pre_ots")
+}
+
+model Hipotesis {
+  id            String @id @default(cuid())
+  nombre        String
+  probabilidad  Int // 0-100, generado por el motor de diagnóstico
+
+  preOt   PreOT  @relation(fields: [preOtId], references: [id], onDelete: Cascade)
+  preOtId String
+
+  @@index([preOtId])
+  @@map("hipotesis")
+}
+
+model HerramientaSugerida {
+  id     String @id @default(cuid())
+  nombre String
+
+  preOt   PreOT  @relation(fields: [preOtId], references: [id], onDelete: Cascade)
+  preOtId String
+
+  @@index([preOtId])
+  @@map("herramientas_sugeridas")
+}
+
+// ---------------- Historial / OT confirmada ----------------
+
+model OrdenTrabajo {
+  id          String   @id @default(cuid())
+  codigo      String   @unique // ej. "OT #4471"
+  descripcion String
+  fecha       DateTime @default(now())
+
+  vehiculo    Vehiculo @relation(fields: [vehiculoId], references: [id])
+  vehiculoId  String
+
+  preOt       PreOT?   @relation(fields: [preOtId], references: [id])
+  preOtId     String?  @unique
+
+  aprobadaPor   Tecnico? @relation("AprobadaPor", fields: [aprobadaPorId], references: [id])
+  aprobadaPorId String?
+
+  @@index([vehiculoId, fecha])
+  @@map("ordenes_trabajo")
+}
