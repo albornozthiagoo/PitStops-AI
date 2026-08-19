@@ -1,0 +1,12 @@
+# Archivos compilados
+*.bin 
+*.elf 
+*.map
+*.obj
+*.o
+*.a
+
+# Archivos temporales 
+.vscode/
+*.DS_Store
+Thumbs.db
