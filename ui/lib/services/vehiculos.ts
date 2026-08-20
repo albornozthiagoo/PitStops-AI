@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { Vehiculo, Prioridad, EstadoVehiculo } from "@prisma/client";
+import type { Vehiculo, Prioridad, EstadoVehiculo } from "@/generated/prisma/client";
 
 // Server-only: este archivo asume que corre dentro de un Server Component
 // o Route Handler. Nunca se importa desde un componente "use client".

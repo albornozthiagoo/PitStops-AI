@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiError, badRequest } from "@/lib/api-helpers";
-import { AutorMensaje, EstadoVehiculo } from "@prisma/client";
+import { AutorMensaje, EstadoVehiculo } from "@/generated/prisma/client";
 
 // GET /api/conversaciones?vehiculoId=xxx
 export async function GET(req: NextRequest) {

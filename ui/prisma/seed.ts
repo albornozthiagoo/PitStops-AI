@@ -1,6 +1,15 @@
-import { PrismaClient, Prioridad, EstadoVehiculo, AutorMensaje } from "@prisma/client";
+import { PrismaClient, Prioridad, EstadoVehiculo, AutorMensaje } from "../generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-const prisma = new PrismaClient();
+// prisma db seed corre como script aparte del resto de la app — necesita su
+// propia instancia con adapter, igual que lib/prisma.ts. Usa DIRECT_URL
+// (la misma que prisma.config.ts) porque es la que corre en el mismo
+// contexto que las migraciones.
+const adapter = new PrismaPg({
+  connectionString: process.env.DIRECT_URL,
+  ssl: { rejectUnauthorized: false },
+});
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log("Sembrando datos de PitStop AI...");

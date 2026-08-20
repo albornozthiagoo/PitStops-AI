@@ -2,33 +2,37 @@
   "name": "pitstop-ai",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:migrate": "NODE_OPTIONS='--dns-result-order=ipv4first' prisma migrate dev",
-    "db:seed": "NODE_OPTIONS='--dns-result-order=ipv4first' prisma db seed",
-    "db:studio": "NODE_OPTIONS='--dns-result-order=ipv4first' prisma studio"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@prisma/client": "5.18.0",
-    "next": "^16.3.1",
+    "next": "14.2.35",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "@prisma/client": "^7.0.0",
+    "@prisma/adapter-pg": "^7.0.0",
+    "pg": "^8.13.0"
   },
   "devDependencies": {
+    "typescript": "5.9.2",
     "@types/node": "20.14.0",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
-    "autoprefixer": "10.4.19",
-    "postcss": "^8.5.26",
-    "prisma": "^5.18.0",
+    "@types/pg": "^8.11.10",
     "tailwindcss": "3.4.7",
-    "tsx": "^4.23.12",
-    "typescript": "5.5.4"
+    "postcss": "8.4.40",
+    "autoprefixer": "10.4.19",
+    "prisma": "^7.0.0",
+    "tsx": "4.16.5",
+    "dotenv": "^16.4.5",
+    "eslint": "8.57.0",
+    "eslint-config-next": "14.2.35"
   }
 }

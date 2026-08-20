@@ -1,6 +1,12 @@
 import { getVehiculos } from "@/lib/services/vehiculos";
 import { Panel, Badge } from "@/components/ui";
 
+// Esta página depende de la base de datos en cada visita — nunca debe
+// prerenderizarse en build time. Sin esto, Next.js intenta generarla como
+// página estática durante `next build`, y si DATABASE_URL no está disponible
+// en ese momento (CI, build local sin .env, etc.) el build entero falla.
+export const dynamic = "force-dynamic";
+
 export default async function VehiculosPage() {
   const vehiculos = await getVehiculos();
 

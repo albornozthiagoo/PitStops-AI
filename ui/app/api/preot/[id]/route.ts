@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiError, badRequest } from "@/lib/api-helpers";
-import { EstadoVehiculo } from "@prisma/client";
+import { EstadoVehiculo } from "@/generated/prisma/client";
 
 interface Params {
   params: { id: string };

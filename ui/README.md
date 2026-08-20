@@ -53,40 +53,62 @@ app/vehiculos/
 Todo el sistema de diseño (colores, tipografías, sombras, animaciones) vive en
 `tailwind.config.ts`. Ningún componente usa hex sueltos.
 
-## Base de datos (Prisma + Postgres)
+## Base de datos (Prisma 7 + Postgres)
 
-1. Conseguí una base Postgres. Lo más rápido sin instalar nada local: creá un
-   proyecto gratis en [Supabase](https://supabase.com) o [Neon](https://neon.tech)
-   y copiá el connection string.
-2. `cp .env.example .env` y pegá tu `DATABASE_URL` ahí.
-3. Corré las migraciones y generá el cliente:
+> **Prisma 7**: este proyecto usa Prisma ORM 7, que sacó el motor en Rust y
+> ahora corre 100% sobre el driver `pg` (node-postgres) vía un *driver
+> adapter* (`@prisma/adapter-pg`). Si venías de una versión anterior del
+> proyecto (Prisma 5/6), este es un cambio grande: `package.json` ahora es
+> `"type": "module"`, la config de conexión vive en `prisma.config.ts` (no
+> en `schema.prisma`), y el cliente se genera en `generated/prisma/` en vez
+> de `node_modules`. Ver [la guía oficial de migración](https://www.prisma.io/docs/orm/v6/more/upgrades/to-v7)
+> si tenés dudas de algún detalle puntual.
+
+**Requisito**: Node ≥ 20.19 (recomendado 22.x). Verificá con `node -v` antes de instalar.
+
+1. Conseguí una base Postgres (Supabase o Neon, gratis). En el dashboard de
+   Supabase: botón **"Connect"** → pestaña **"ORMs"** → **Prisma** — te arma
+   las dos líneas de conexión listas para copiar.
+2. `cp .env.example .env` y completá `DATABASE_URL` y `DIRECT_URL` con
+   los dos connection strings (ver comentarios en `.env.example` sobre
+   cuál puerto usa cada uno y por qué).
+3. Instalá dependencias y generá el cliente:
+   ```bash
+   npm install
+   npx prisma generate
+   ```
+4. Corré las migraciones:
    ```bash
    npm run db:migrate
    ```
-   Esto crea las tablas en tu Postgres según `prisma/schema.prisma` y genera
-   `@prisma/client` con tipos TypeScript para cada modelo.
-4. Cargá los datos de ejemplo (los mismos que hoy están en `lib/mock-data.ts`):
+5. Cargá los datos de ejemplo — **ya no es automático** con `migrate dev`
+   como en versiones anteriores de Prisma, hay que correrlo aparte:
    ```bash
    npm run db:seed
    ```
-5. Para inspeccionar la base con una UI:
+6. Para inspeccionar la base con una UI:
    ```bash
    npm run db:studio
    ```
 
-> **Nota sobre este entorno de generación**: no pude correr
-> `npx prisma validate` / `npx prisma generate` acá porque el sandbox bloquea
-> la salida de red a `binaries.prisma.sh` (el CDN donde Prisma descarga sus
-> engines). Revisé el schema a mano — todas las relaciones están emparejadas
-> correctamente (incluidas las 1-a-1 con `@unique` en la FK y las relaciones
-> nombradas como `"AprobadaPor"`) — pero corré `npm run db:migrate` en tu
-> máquina como primer chequeo real antes de darlo por bueno.
->
-> Por el mismo motivo, `tsc --noEmit` marca errores en `lib/services/vehiculos.ts`
-> y `prisma/seed.ts` diciendo que `@prisma/client` "no exported member Vehiculo/Prioridad/...".
-> Es esperado: esos tipos los genera `prisma generate` a partir de tu schema, y
-> ese paso no corrió acá. Desaparecen solos en cuanto ejecutes `npm run db:migrate`
-> con internet normal.
+### Si venís de una versión anterior de este proyecto (Prisma 5/6)
+
+Los cambios están todos interconectados (config, imports, tipo de módulo),
+así que lo más seguro es reemplazar el proyecto entero por esta versión en
+vez de aplicar los cambios a mano archivo por archivo. Los puntos clave si
+igual querés compararlo con tu copia local:
+
+- `package.json` tiene `"type": "module"` — por eso `next.config.js` y
+  `postcss.config.js` pasaron a `.mjs`.
+- Cualquier import de `"@prisma/client"` ahora es `"@/generated/prisma/client"`
+  (o `"../generated/prisma/client"` desde `prisma/seed.ts`, que está fuera
+  del alias `@/*`).
+- `schema.prisma` ya no tiene `url`/`directUrl` en el `datasource` — esa
+  configuración se movió a `prisma.config.ts`.
+- Cualquier lugar que instancie `new PrismaClient()` (como `lib/prisma.ts`
+  y `prisma/seed.ts`) ahora necesita pasarle un `adapter` de
+  `@prisma/adapter-pg`.
+
 
 
 
