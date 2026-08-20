@@ -2,15 +2,16 @@
 
 Sistema inteligente de prediagnóstico conversacional para talleres mecánicos.
 
-Cuando un cliente escribe "el auto no arranca", PitStop AI hace las preguntas
-justas y necesarias (según un árbol dinámico adaptado al síntoma), y entrega al
-taller una **Pre-OT** (preorden de trabajo) ya estructurada: vehículo, síntoma,
-urgencia, posibles causas, tiempo estimado y herramientas sugeridas — antes de
-que el auto llegue al taller.
+El cliente escribe al **WhatsApp Business que el taller ya usa** — "el auto no
+arranca" — y del otro lado responde la IA en vez del mecánico: hace las
+preguntas justas y necesarias según un árbol dinámico adaptado al síntoma, y
+entrega al taller una **Pre-OT** (preorden de trabajo) ya estructurada:
+vehículo, síntoma, urgencia, posibles causas, tiempo estimado y herramientas
+sugeridas — antes de que el auto llegue al taller.
 
-No reemplaza al mecánico ni da un diagnóstico definitivo: automatiza el
-interrogatorio inicial y convierte una conversación informal en información
-técnica utilizable.
+No reemplaza al mecánico ni da un diagnóstico definitivo, y no es intrusivo: si
+el técnico quiere meterse a hablar en cualquier momento, puede tomar la
+conversación y la IA se hace a un lado.
 
 > Anteproyecto completo (problema, propuesta de valor, cronograma, riesgos):
 > [`docs/Anteproyecto PitStop AI.pdf`](docs/Anteproyecto%20PitStop%20AI.pdf)
@@ -35,9 +36,10 @@ media · posible causa: batería descargada · ~15 min · herramienta: multímet
 
 | Componente | Tecnología |
 |---|---|
-| Frontend | Next.js 14 (App Router) + React + TypeScript + Tailwind |
+| Panel del taller | Next.js 14 (App Router) + React + TypeScript + Tailwind |
+| Canal con el cliente | WhatsApp Business (Cloud API o BSP) |
 | IA | OpenAI GPT |
-| Automatización | n8n |
+| Orquestación | n8n (WhatsApp ↔ IA ↔ base ↔ notificación al técnico) |
 | Base de datos | PostgreSQL + Prisma |
 | Versionado | GitHub |
 | Deploy | Vercel |
@@ -49,7 +51,10 @@ docs/   Anteproyecto y documentación del proyecto
 ui/     App Next.js — frontend, API routes y schema de Prisma
 ```
 
-La app vive en [`ui/`](ui/). Para levantarla en local:
+La app vive en [`ui/`](ui/) — es el **backoffice del taller**: monitorea las
+conversaciones de WhatsApp en vivo, permite tomar/soltar el control de una
+conversación, y muestra Pre-OTs, cola de vehículos e historial. No es donde se
+escribe el mensaje del cliente. Para levantarla en local:
 
 ```bash
 cd ui
