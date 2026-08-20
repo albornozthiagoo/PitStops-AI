@@ -16,9 +16,7 @@ export function QueueRow({ vehiculo }: { vehiculo: Vehiculo }) {
   const accion =
     vehiculo.estado === "completado"
       ? { href: "/historial", label: "Historial" }
-      : vehiculo.prioridad === "critica"
-      ? { href: "/preot", label: "Ver Pre-OT" }
-      : { href: "/chat", label: "Continuar" };
+      : { href: "/preot", label: "Ver diagnóstico" };
 
   return (
     <div className="grid grid-cols-[90px_1.3fr_1fr_0.8fr_0.8fr_100px] gap-3 items-center px-4 py-3.5 border-b border-line-soft hover:bg-steel-800 transition-colors">

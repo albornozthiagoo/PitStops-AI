@@ -3,15 +3,17 @@ import { prisma } from "@/lib/prisma";
 import { apiError, badRequest } from "@/lib/api-helpers";
 import { AutorMensaje, EstadoVehiculo } from "@/generated/prisma/client";
 
-// GET /api/conversaciones?vehiculoId=xxx
+// GET /api/conversaciones?vehiculoId=xxx&clienteId=xxx
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const vehiculoId = searchParams.get("vehiculoId") ?? undefined;
+    const clienteId = searchParams.get("clienteId") ?? undefined;
 
     const conversaciones = await prisma.conversacion.findMany({
-      where: { vehiculoId },
+      where: { vehiculoId, clienteId },
       include: {
+        cliente: true,
         vehiculo: true,
         mensajes: { orderBy: { createdAt: "asc" } },
       },
@@ -24,21 +26,25 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/conversaciones — abre un chat nuevo para un vehículo,
-// con el primer mensaje del técnico ya cargado.
+// POST /api/conversaciones — abre un chat manualmente (uso del técnico
+// desde el dashboard). El flujo normal es que el webhook de WhatsApp
+// (app/api/webhooks/whatsapp) cree la conversación solo, así que acá
+// solo `clienteId` es obligatorio: `vehiculoId`/`tecnicoId` se asignan
+// después, cuando se identifica el vehículo o un técnico toma el caso.
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { vehiculoId, tecnicoId, titulo, subtitulo, primerMensaje } = body;
+    const { clienteId, vehiculoId, tecnicoId, titulo, subtitulo, primerMensaje } = body;
 
-    if (!vehiculoId || !tecnicoId || !titulo || !primerMensaje) {
-      return badRequest("Faltan campos requeridos: vehiculoId, tecnicoId, titulo, primerMensaje");
+    if (!clienteId || !titulo || !primerMensaje) {
+      return badRequest("Faltan campos requeridos: clienteId, titulo, primerMensaje");
     }
 
     const conversacion = await prisma.conversacion.create({
       data: {
-        vehiculoId,
-        tecnicoId,
+        clienteId,
+        vehiculoId: vehiculoId ?? undefined,
+        tecnicoId: tecnicoId ?? undefined,
         titulo,
         subtitulo: subtitulo ?? "",
         estado: EstadoVehiculo.EN_COLA,

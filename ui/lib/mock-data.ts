@@ -1,6 +1,5 @@
 import type {
   Vehiculo,
-  Conversacion,
   PreOT,
   HistorialVehiculo,
 } from "./types";
@@ -55,69 +54,6 @@ export const vehiculos: Vehiculo[] = [
     sintoma: "Vibración al frenar",
     prioridad: "baja",
     estado: "completado",
-  },
-];
-
-export const conversaciones: Conversacion[] = [
-  {
-    id: "conv-4471",
-    vehiculoId: "veh-1",
-    titulo: "VW Amarok · B-02",
-    subtitulo: "Ruido metálico en frenado",
-    estado: "diagnosticando",
-    mensajes: [
-      {
-        id: "m1",
-        autor: "tecnico",
-        texto: "Buenas, el cliente reporta un ruido metálico al frenar, más fuerte en frío. ¿Con qué empiezo?",
-      },
-      {
-        id: "m2",
-        autor: "sistema",
-        tag: "PitStop AI",
-        texto: "Empecemos por descartar lo más frecuente. ¿El ruido es tipo chirrido agudo o golpeteo grave? Y decime, ¿aparece con el pedal firme o se siente esponjoso?",
-      },
-      {
-        id: "m3",
-        autor: "tecnico",
-        texto: "Chirrido agudo, constante. Pedal firme, sin juego.",
-      },
-      {
-        id: "m4",
-        autor: "sistema",
-        tag: "PitStop AI · analizando patrón",
-        texto: "Con pedal firme y chirrido agudo constante, la hipótesis principal apunta a desgaste de pastillas con indicador metálico en contacto. Voy a correr el diagnóstico contra el historial de la unidad.",
-        scanPct: 70,
-      },
-    ],
-  },
-  {
-    id: "conv-4465",
-    vehiculoId: "veh-2",
-    titulo: "Toyota Hilux · B-04",
-    subtitulo: "Arranque intermitente",
-    estado: "en_cola",
-    mensajes: [
-      {
-        id: "m1",
-        autor: "tecnico",
-        texto: "El vehículo no arranca en frío, a veces necesita 3 o 4 intentos.",
-      },
-    ],
-  },
-  {
-    id: "conv-4472",
-    vehiculoId: "veh-3",
-    titulo: "Ford Ranger · B-06",
-    subtitulo: "Temperatura elevada",
-    estado: "diagnosticando",
-    mensajes: [
-      {
-        id: "m1",
-        autor: "tecnico",
-        texto: "La aguja de temperatura sube por encima de lo normal en ruta.",
-      },
-    ],
   },
 ];
 

@@ -13,23 +13,6 @@ export interface Vehiculo {
   estado: EstadoVehiculo;
 }
 
-export interface Mensaje {
-  id: string;
-  autor: "tecnico" | "sistema";
-  texto: string;
-  tag?: string;
-  scanPct?: number;
-}
-
-export interface Conversacion {
-  id: string;
-  vehiculoId: string;
-  titulo: string;
-  subtitulo: string;
-  estado: EstadoVehiculo;
-  mensajes: Mensaje[];
-}
-
 export interface Hipotesis {
   nombre: string;
   probabilidad: number; // 0-100

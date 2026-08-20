@@ -30,6 +30,7 @@ enum EstadoVehiculo {
 
 enum AutorMensaje {
   TECNICO
+  CLIENTE
   SISTEMA
 }
 
@@ -77,11 +78,12 @@ model Tecnico {
 model Cliente {
   id        String   @id @default(cuid())
   nombre    String
-  telefono  String?
+  telefono  String?  @unique // clave de match con el número de WhatsApp entrante
   email     String?
   createdAt DateTime @default(now())
 
-  vehiculos Vehiculo[]
+  vehiculos      Vehiculo[]
+  conversaciones Conversacion[]
 
   @@map("clientes")
 }
@@ -113,36 +115,46 @@ model Vehiculo {
   @@map("vehiculos")
 }
 
-// ---------------- Chat de prediagnóstico ----------------
+// ---------------- Chat de prediagnóstico (vía WhatsApp) ----------------
+// El chat ya no se escribe desde la UI: el cliente le habla al WhatsApp
+// del taller (webhook en app/api/webhooks/whatsapp), y esos mensajes se
+// persisten acá. `cliente` es el ancla obligatoria (es lo único que el
+// webhook conoce apenas llega el primer mensaje); `vehiculo`/`tecnico`
+// quedan opcionales hasta que se identifican/asignan.
 
 model Conversacion {
   id        String         @id @default(cuid())
-  titulo    String // ej. "VW Amarok · B-02"
+  titulo    String // ej. "VW Amarok · B-02" (o nombre/teléfono del cliente hasta identificar el vehículo)
   subtitulo String // ej. "Ruido metálico en frenado"
   estado    EstadoVehiculo @default(EN_COLA)
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
-  vehiculo   Vehiculo @relation(fields: [vehiculoId], references: [id])
-  vehiculoId String
+  cliente   Cliente @relation(fields: [clienteId], references: [id])
+  clienteId String
 
-  tecnico    Tecnico  @relation(fields: [tecnicoId], references: [id])
-  tecnicoId  String
+  vehiculo   Vehiculo? @relation(fields: [vehiculoId], references: [id])
+  vehiculoId String?
+
+  tecnico   Tecnico? @relation(fields: [tecnicoId], references: [id])
+  tecnicoId String?
 
   mensajes Mensaje[]
   preOt    PreOT?
 
+  @@index([clienteId])
   @@index([vehiculoId])
   @@map("conversaciones")
 }
 
 model Mensaje {
-  id        String       @id @default(cuid())
-  autor     AutorMensaje
-  texto     String       @db.Text
-  tag       String? // ej. "PitStop AI · analizando patrón"
-  scanPct   Int? // progreso del escaneo mostrado en el bubble, 0-100
-  createdAt DateTime     @default(now())
+  id          String       @id @default(cuid())
+  autor       AutorMensaje
+  texto       String       @db.Text
+  tag         String? // ej. "PitStop AI · analizando patrón"
+  scanPct     Int? // progreso del escaneo mostrado en el bubble, 0-100
+  waMessageId String?      @unique // wamid del mensaje en WhatsApp — evita duplicar si Meta reintenta el webhook
+  createdAt   DateTime     @default(now())
 
   conversacion   Conversacion @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
   conversacionId String

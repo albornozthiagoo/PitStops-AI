@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { Button, Panel } from "@/components/ui";
+import { Panel } from "@/components/ui";
 import { QueueRow } from "@/components/dashboard/QueueRow";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { vehiculos } from "@/lib/mock-data";
@@ -12,11 +11,8 @@ export default function DashboardPage() {
         Centro de diagnóstico
       </div>
 
-      <div className="flex justify-between items-end mb-[22px]">
+      <div className="mb-[22px]">
         <h2 className="text-2xl">Dashboard del taller</h2>
-        <Link href="/chat">
-          <Button variant="primary">+ Nuevo diagnóstico</Button>
-        </Link>
       </div>
 
       <div className="grid grid-cols-4 gap-4 mb-6">

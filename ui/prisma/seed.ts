@@ -109,6 +109,7 @@ async function main() {
       titulo: "VW Amarok · B-02",
       subtitulo: "Ruido metálico en frenado",
       estado: EstadoVehiculo.DIAGNOSTICANDO,
+      clienteId: clienteAmarok.id,
       vehiculoId: amarok.id,
       tecnicoId: tecnico.id,
       mensajes: {
@@ -146,6 +147,7 @@ async function main() {
       titulo: "Toyota Hilux · B-04",
       subtitulo: "Arranque intermitente",
       estado: EstadoVehiculo.EN_COLA,
+      clienteId: clienteHilux.id,
       vehiculoId: hilux.id,
       tecnicoId: tecnico.id,
       mensajes: {
@@ -164,6 +166,7 @@ async function main() {
       titulo: "Ford Ranger · B-06",
       subtitulo: "Temperatura elevada",
       estado: EstadoVehiculo.DIAGNOSTICANDO,
+      clienteId: clienteRanger.id,
       vehiculoId: ranger.id,
       tecnicoId: tecnico.id,
       mensajes: {
