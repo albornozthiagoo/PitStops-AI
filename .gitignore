@@ -6,6 +6,9 @@
 *.o
 *.a
 
+# Archivos de Claude
+claude.md
+
 # Archivos temporales 
 .vscode/
 *.DS_Store
