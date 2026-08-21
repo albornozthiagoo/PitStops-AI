@@ -79,15 +79,32 @@ Lo que falta es conectar todo esto al canal de WhatsApp, un motor de IA real,
 autenticación real, automatización con n8n y despliegue. Ese es el foco de los
 pasos de abajo.
 
+**Dónde quedamos (2026-08-21)**: env vars cargadas, DB migrada/sembrada, y el
+canal de WhatsApp probado end-to-end (mensaje real → webhook → guardado en
+Postgres) — ver detalle en puntos 1 y 3.A/3.B. Todavía no hay respuesta
+automática (motor conversacional, punto 4) ni login funcional (punto 2, el
+seed tiene un password placeholder). Próximo paso lógico sugerido: punto 4
+(motor conversacional) para que la IA le conteste algo al cliente, o punto 2
+(login) — quedó pendiente de decidir con el usuario cuál va primero.
+
 ## Pasos para desarrollar la web correctamente
 
 ### 1. Fundamentos
-- [ ] Confirmar variables de entorno necesarias (`DATABASE_URL`, `DIRECT_URL`,
-      `OPENAI_API_KEY`, credenciales de n8n) y documentarlas en `ui/.env.example`.
-- [ ] Correr `prisma migrate dev` contra una base Postgres real (local o Supabase)
+- [x] Confirmar variables de entorno necesarias (`DATABASE_URL`, `DIRECT_URL`,
+      `OPENAI_API_KEY`, credenciales de Twilio) y documentarlas en
+      `ui/.env.example` — cargadas en `ui/.env` (2026-08-21), Supabase como
+      Postgres. Credenciales de n8n todavía no aplica (n8n sigue fuera del
+      camino crítico, ver punto 3.D).
+- [x] Correr `prisma migrate dev` contra una base Postgres real (local o Supabase)
       y `db:seed` para tener datos de prueba consistentes con `lib/types.ts`.
+      Hecho 2026-08-21 contra Supabase: sin migraciones pendientes, `prisma
+      generate` + `db seed` corridos OK (taller, técnico, 4 clientes/vehículos,
+      conversaciones, 1 Pre-OT, historial de OTs). ⚠️ El técnico sembrado tiene
+      `passwordHash: "REEMPLAZAR_POR_HASH_REAL"` — placeholder, no sirve para
+      loguear hasta el punto 2.
 - [ ] Decidir dónde vive la sesión/autenticación (NextAuth vs. JWT propio) para
-      `Tecnico` — el login ya tiene UI pero no lógica.
+      `Tecnico` — el login ya tiene UI pero no lógica. **Pendiente, sin decidir
+      todavía.**
 
 ### 2. Autenticación básica
 - [ ] Implementar login real contra `Tecnico` (passwordHash con bcrypt).
@@ -101,30 +118,51 @@ pasos de abajo.
 - [x] Anotar **Account SID** y **Auth Token** (Dashboard principal) — guardados
       en `ui/.env` (nunca en el repo; `ui/.env.example` tiene las claves sin
       valores).
-- [ ] Activar el sandbox: *Messaging → Try it out → Send a WhatsApp message*.
+- [x] Activar el sandbox: *Messaging → Try it out → Send a WhatsApp message*.
       Anotar el **número de sandbox** (`whatsapp:+14155238886`, es el mismo
       para todas las cuentas) y el **join code** propio.
-- [ ] Unir el/los número(s) de teléfono personal(es) que van a hacer de
+- [x] Unir el/los número(s) de teléfono personal(es) que van a hacer de
       "cliente" de prueba: desde WhatsApp, mandarle `join <code>` al número de
       sandbox. Se puede sumar más de un número repitiendo el mismo join code.
       A diferencia de Meta (máx. 5 destinatarios verificados), acá no hay un
       límite duro, pero cada sesión de sandbox expira a los 3 días de
       inactividad y hay que volver a unirse.
+      Nota: **no** confundir con *"Send a business-initiated message"* en
+      Console — eso simula al taller escribiendo primero (mensaje con
+      plantilla) y no pasa por el webhook de la misma forma. El smoke test
+      real es mandar el WhatsApp desde el celular del "cliente" al número de
+      sandbox, como cualquier chat.
 
 **B. Webhook**
 - [x] Implementado en `ui/app/api/webhooks/whatsapp/route.ts` (Next.js, no
       n8n) — Twilio no tiene handshake GET como Meta, así que no hace falta
       Verify Token; la firma entrante se valida con `TWILIO_AUTH_TOKEN` +
       header `X-Twilio-Signature` vía `twilio.validateRequest`.
-- [ ] Exponer el endpoint público: en local con `ngrok http 3000` (o el
+- [x] Exponer el endpoint público: en local con `ngrok http 3000` (o el
       dominio de Vercel en producción) y cargar esa URL + `/api/webhooks/whatsapp`
       en Twilio Console → *WhatsApp Sandbox Settings* → **"WHEN A MESSAGE
       COMES IN"** (método `POST`).
-- [ ] Ojo con ngrok: `validateRequest` firma contra la URL pública exacta: el
+- [x] Ojo con ngrok: `validateRequest` firma contra la URL pública exacta: el
       código ya usa los headers `x-forwarded-proto`/`x-forwarded-host` para
       reconstruirla en vez de confiar en `req.url` a ciegas, pero si falla la
       validación en dev, confirmar que la URL cargada en Twilio coincide
       carácter a carácter con la del túnel.
+
+**Smoke test end-to-end confirmado (2026-08-21)**: `npm run dev` (puerto 3000)
++ `ngrok http 3000` corriendo local, URL de sandbox cargada en Twilio Console.
+Mensaje real de WhatsApp ("el auto no arranca") recibido → `POST
+/api/webhooks/whatsapp 200` → verificado en la base: se creó `Cliente`
+(teléfono `+549...`, upsert por número), `Conversacion` (`EN_COLA`) y
+`Mensaje` (`autor: CLIENTE`, con `waMessageId` de Twilio). El pipeline de
+recepción y persistencia funciona de punta a punta. **Falta la respuesta**:
+hoy el webhook solo guarda, no contesta nada — eso depende del motor
+conversacional (punto 4, todavía sin empezar).
+⚠️ Nota de infra dev: en este entorno, `npm run dev` y `ngrok` corridos con
+`run_in_background` a veces reportan "completado"/exit code apenas arrancan
+aunque el proceso siga vivo de fondo (el wrapper de shell se desprende) — no
+asumir que murieron solo por ese aviso; confirmar con `netstat`/intentando
+levantar de nuevo (falla con "puerto ocupado" / "endpoint ya online" si
+siguen corriendo) antes de relanzar.
 
 **C. Envío de mensajes**
 - [x] Implementado en `ui/lib/whatsapp.ts` — usa el SDK oficial `twilio` con
