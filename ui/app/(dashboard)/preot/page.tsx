@@ -1,10 +1,35 @@
 import { Badge, Button, Panel } from "@/components/ui";
 import { HypothesisRow } from "@/components/preot/HypothesisRow";
-import { preOts, vehiculos } from "@/lib/mock-data";
+import { getUltimoPreOt } from "@/lib/services/preot";
+import { Prioridad } from "@/generated/prisma/client";
 
-export default function PreOtPage() {
-  const preOt = preOts[0];
-  const vehiculo = vehiculos.find((v) => v.id === preOt.vehiculoId)!;
+// Depende de la base en cada visita — nunca prerenderizar en build time.
+export const dynamic = "force-dynamic";
+
+const PRIORIDAD_LABEL: Record<Prioridad, string> = {
+  [Prioridad.CRITICA]: "crítica",
+  [Prioridad.MEDIA]: "media",
+  [Prioridad.BAJA]: "baja",
+};
+
+const PRIORIDAD_STATUS: Record<Prioridad, "critica" | "media" | "baja"> = {
+  [Prioridad.CRITICA]: "critica",
+  [Prioridad.MEDIA]: "media",
+  [Prioridad.BAJA]: "baja",
+};
+
+export default async function PreOtPage() {
+  const preOt = await getUltimoPreOt();
+
+  if (!preOt) {
+    return (
+      <div className="h-full flex items-center justify-center p-7">
+        <p className="text-text-lo">Todavía no se generó ninguna Pre-OT.</p>
+      </div>
+    );
+  }
+
+  const { vehiculo } = preOt;
 
   return (
     <div className="h-full overflow-auto p-7">
@@ -19,11 +44,11 @@ export default function PreOtPage() {
           <div>
             <h3 className="text-base">{vehiculo.modelo}</h3>
             <div className="font-mono text-xs text-text-lo">
-              {preOt.id} · generada {preOt.generada}
+              {preOt.codigo} · generada {preOt.generada.toLocaleString("es-AR")}
             </div>
           </div>
-          <Badge status={preOt.prioridad === "critica" ? "critica" : preOt.prioridad === "media" ? "media" : "baja"}>
-            Prioridad {preOt.prioridad === "critica" ? "crítica" : preOt.prioridad === "media" ? "media" : "baja"}
+          <Badge status={PRIORIDAD_STATUS[preOt.prioridad]}>
+            Prioridad {PRIORIDAD_LABEL[preOt.prioridad]}
           </Badge>
         </div>
 
@@ -31,7 +56,7 @@ export default function PreOtPage() {
           <Field label="Patente" value={vehiculo.patente} />
           <Field label="VIN" value={vehiculo.vin} />
           <Field label="Kilometraje" value={`${vehiculo.kilometraje.toLocaleString("es-AR")} km`} />
-          <Field label="Bahía" value={vehiculo.bahia} />
+          <Field label="Bahía" value={vehiculo.bahia ?? "—"} />
         </div>
 
         <div className="px-7 py-[22px] border-b border-line-soft">
@@ -46,7 +71,7 @@ export default function PreOtPage() {
             Hipótesis diagnósticas
           </span>
           {preOt.hipotesis.map((h) => (
-            <HypothesisRow key={h.nombre} hipotesis={h} />
+            <HypothesisRow key={h.id} hipotesis={h} />
           ))}
         </div>
 
@@ -57,10 +82,10 @@ export default function PreOtPage() {
           <div className="flex gap-2 flex-wrap">
             {preOt.herramientas.map((t) => (
               <span
-                key={t}
+                key={t.id}
                 className="font-mono text-[11.5px] text-text-md bg-steel-800 border border-line px-2.5 py-1.5 clip-badge"
               >
-                {t}
+                {t.nombre}
               </span>
             ))}
           </div>

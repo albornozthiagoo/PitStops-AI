@@ -1,5 +1,5 @@
 import { ProbBar } from "@/components/ui";
-import type { Hipotesis } from "@/lib/types";
+import type { Hipotesis } from "@/generated/prisma/client";
 
 export function HypothesisRow({ hipotesis }: { hipotesis: Hipotesis }) {
   return (
