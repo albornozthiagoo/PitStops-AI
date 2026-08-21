@@ -22,17 +22,23 @@ Reglas de producto no negociables:
 - Es un *prediagnóstico*, nunca se presenta como diagnóstico definitivo.
 
 Stack definido en el anteproyecto: Next.js + React (panel del taller), OpenAI
-GPT (IA conversacional), **WhatsApp Cloud API (Meta, directa)** como canal con
-el cliente, n8n (orquestación: WhatsApp ↔ IA ↔ base ↔ notificación), Prisma +
+GPT (IA conversacional), **WhatsApp vía Twilio (Sandbox)** como canal con el
+cliente, n8n (orquestación: WhatsApp ↔ IA ↔ base ↔ notificación), Prisma +
 PostgreSQL (SQLite solo si hace falta prototipar rápido), GitHub (versionado),
 Vercel (deploy).
 
-Se eligió Cloud API por sobre un BSP (Twilio/360dialog/WATI): es gratis, tiene
-número de prueba instantáneo sin verificación de negocio (hasta 5 destinatarios
-de prueba), y n8n trae un nodo nativo para ella (trigger + envío) sin
-intermediarios de pago. El único trade-off es que un número de **producción**
-real requiere verificación de negocio en Meta (puede tardar días) — no bloquea
-el desarrollo del MVP, solo el paso final si se quiere un número real del taller.
+**Pivot de canal (2026-08-20)**: el plan original elegía WhatsApp Cloud API
+(Meta) directa por sobre un BSP, pero el alta de número de prueba en la
+consola de Meta quedó bloqueada por un bug del wizard (la pantalla se
+reiniciaba sin mostrar el número, probado en múltiples navegadores/redes/
+cuentas). Se pivotea a **Twilio WhatsApp Sandbox**: alta instantánea sin
+verificación de negocio, número compartido de sandbox (`+1 415 523 8886`) al
+que cada "cliente" de prueba se une mandando un join code por WhatsApp. El
+trade-off es que el webhook entrante no tiene nodo trigger nativo en n8n como
+el de Meta — se resuelve con un nodo Webhook genérico apuntado desde Twilio
+Console. Igual que con Meta, pasar a un número de **producción** real
+requeriría eventualmente verificación de negocio en Meta (Twilio es un BSP
+sobre la misma plataforma) — no bloquea el MVP.
 
 ## Cómo funciona (flujo real)
 
@@ -88,47 +94,61 @@ pasos de abajo.
 - [ ] Proteger las rutas de `(dashboard)` para que requieran sesión.
 - [ ] Mostrar iniciales/rol del técnico logueado en el Topbar (ya hay componente).
 
-### 3. Canal de WhatsApp — WhatsApp Cloud API (Meta) + n8n
+### 3. Canal de WhatsApp — Twilio WhatsApp Sandbox + n8n
 
-**A. Alta en Meta**
-- [ ] Crear cuenta en [developers.facebook.com](https://developers.facebook.com)
-      y una App nueva de tipo "Business".
-- [ ] Dentro de la App, agregar el producto **WhatsApp**.
-- [ ] En *WhatsApp → API Setup* anotar: número de prueba (ya provisto por Meta),
-      **Phone Number ID**, **WhatsApp Business Account ID (WABA ID)** y el
-      token temporal de 24hs (solo para probar al toque).
-- [ ] Agregar hasta 5 números de teléfono personales como "destinatarios de
-      prueba" y verificarlos con el código OTP que llega por WhatsApp — esos van
-      a ser los "clientes" que puedan chatear con el bot durante el desarrollo.
-- [ ] Generar un **token permanente**: Meta Business Suite → System Users →
-      crear un system user, asignarle la App y el WABA, generar token con
-      permisos `whatsapp_business_messaging` y `whatsapp_business_management`
-      sin expiración. Guardarlo como secreto, nunca en el repo.
+**A. Alta en Twilio**
+- [x] Crear cuenta en [console.twilio.com](https://console.twilio.com).
+- [x] Anotar **Account SID** y **Auth Token** (Dashboard principal) — guardados
+      en `ui/.env` (nunca en el repo; `ui/.env.example` tiene las claves sin
+      valores).
+- [ ] Activar el sandbox: *Messaging → Try it out → Send a WhatsApp message*.
+      Anotar el **número de sandbox** (`whatsapp:+14155238886`, es el mismo
+      para todas las cuentas) y el **join code** propio.
+- [ ] Unir el/los número(s) de teléfono personal(es) que van a hacer de
+      "cliente" de prueba: desde WhatsApp, mandarle `join <code>` al número de
+      sandbox. Se puede sumar más de un número repitiendo el mismo join code.
+      A diferencia de Meta (máx. 5 destinatarios verificados), acá no hay un
+      límite duro, pero cada sesión de sandbox expira a los 3 días de
+      inactividad y hay que volver a unirse.
 
 **B. Webhook**
-- [ ] Definir dónde vive el webhook que recibe los mensajes entrantes: lo más
-      directo es el **nodo "WhatsApp Trigger" de n8n** (evita duplicar lógica
-      en Next.js). Si n8n corre local, exponerlo con `ngrok` mientras se prueba.
-- [ ] En Meta → *WhatsApp → Configuration*, cargar la URL del webhook de n8n +
-      un **Verify Token** propio (cualquier string), y suscribirse al campo
-      `messages`.
-- [ ] Confirmar el handshake: Meta hace un GET de verificación al guardar —
-      si no responde 200 con el challenge, revisar el Verify Token.
+- [x] Implementado en `ui/app/api/webhooks/whatsapp/route.ts` (Next.js, no
+      n8n) — Twilio no tiene handshake GET como Meta, así que no hace falta
+      Verify Token; la firma entrante se valida con `TWILIO_AUTH_TOKEN` +
+      header `X-Twilio-Signature` vía `twilio.validateRequest`.
+- [ ] Exponer el endpoint público: en local con `ngrok http 3000` (o el
+      dominio de Vercel en producción) y cargar esa URL + `/api/webhooks/whatsapp`
+      en Twilio Console → *WhatsApp Sandbox Settings* → **"WHEN A MESSAGE
+      COMES IN"** (método `POST`).
+- [ ] Ojo con ngrok: `validateRequest` firma contra la URL pública exacta: el
+      código ya usa los headers `x-forwarded-proto`/`x-forwarded-host` para
+      reconstruirla en vez de confiar en `req.url` a ciegas, pero si falla la
+      validación en dev, confirmar que la URL cargada en Twilio coincide
+      carácter a carácter con la del túnel.
 
-**C. n8n**
-- [ ] Cargar credenciales "WhatsApp Business Cloud API" en n8n (Access Token
-      permanente + Phone Number ID + WABA ID).
-- [ ] Armar un workflow mínimo de humo: WhatsApp Trigger → nodo que responda
-      "recibido" con el mismo número, para validar el circuito de ida y vuelta
-      **antes** de meter la IA (así se aísla cualquier problema de credenciales
-      del problema de lógica conversacional).
+**C. Envío de mensajes**
+- [x] Implementado en `ui/lib/whatsapp.ts` — usa el SDK oficial `twilio` con
+      `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_WHATSAPP_NUMBER`
+      para mandar mensajes salientes vía `client.messages.create`.
 
-**D. Modelo de datos**
+**D. n8n (orquestación, opcional para el smoke test inicial)**
+- [ ] A diferencia del nodo "WhatsApp Trigger" nativo de Meta, Twilio **no**
+      tiene trigger propio en n8n para mensajes entrantes — el webhook de
+      Next.js (punto B) ya cubre la recepción, así que n8n entra recién para
+      orquestar el resto (IA, notificación al técnico) o se lo puede dejar
+      fuera del camino crítico si el webhook de Next.js hace todo el flujo
+      directo.
+- [ ] Si se usa n8n igual: nodo Webhook genérico (no "WhatsApp Trigger") →
+      lógica de handoff/IA → nodo HTTP Request contra la API de Twilio (o
+      contra `enviarMensajeWhatsapp` expuesto como endpoint interno).
+
+**E. Modelo de datos**
 - [ ] Agregar al schema (`Conversacion`) un campo de **modo/handoff**
       (ej. `controladaPor: IA | TECNICO`) para saber si la IA puede responder
       o si el técnico tomó el chat — hoy `EstadoVehiculo` no cubre esto.
-- [ ] Guardar el número de WhatsApp del cliente en `Cliente.telefono` (ya existe
-      en el schema) para poder identificar la conversación entrante por número.
+- [x] Guardar el número de WhatsApp del cliente en `Cliente.telefono` (ya
+      existe en el schema) — el webhook ya lo hace vía `upsert`, guardando el
+      número sin el prefijo `whatsapp:`.
 
 ### 4. Motor conversacional (núcleo del producto)
 - [ ] Diseñar el árbol de preguntas dinámico por tipo de avería (arranque, frenos,
