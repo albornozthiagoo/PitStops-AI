@@ -24,17 +24,36 @@ function tokenBot(): string {
   return token;
 }
 
-async function llamarTelegram(metodo: string, body: unknown): Promise<void> {
-  const res = await fetch(`https://api.telegram.org/bot${tokenBot()}/${metodo}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+const INTENTOS_MAX = 3;
 
-  if (!res.ok) {
-    const detalle = await res.text();
-    throw new Error(`Telegram ${metodo} falló (${res.status}): ${detalle}`);
+async function llamarTelegram(metodo: string, body: unknown): Promise<void> {
+  let ultimoError: unknown;
+  for (let intento = 1; intento <= INTENTOS_MAX; intento++) {
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${tokenBot()}/${metodo}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const detalle = await res.text();
+        throw new Error(`Telegram ${metodo} falló (${res.status}): ${detalle}`);
+      }
+      return;
+    } catch (error) {
+      ultimoError = error;
+      // Vimos ECONNRESET intermitente en este entorno (red del dev, no algo
+      // que dependa del código) — reintentar con un pequeño backoff resuelve
+      // la mayoría de los casos. Nunca queremos que un solo hiccup de red
+      // deje al cliente sin la respuesta que ya generó la IA.
+      console.warn(`[telegram] intento ${intento}/${INTENTOS_MAX} de ${metodo} falló:`, error);
+      if (intento < INTENTOS_MAX) {
+        await new Promise((r) => setTimeout(r, 500 * intento));
+      }
+    }
   }
+  throw ultimoError;
 }
 
 export async function enviarMensajeTelegram(chatId: string, texto: string, botones?: BotonTelegram[]): Promise<void> {

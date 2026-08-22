@@ -82,7 +82,7 @@ export async function correrTurnoDiagnostico(conversacionId: string): Promise<Re
   });
 
   const paso = await generarSiguientePaso(
-    conversacion.mensajes.map((m) => ({ autor: m.autor, texto: m.texto }))
+    conversacion.mensajes.map((m) => ({ autor: m.autor, texto: m.texto, tag: m.tag }))
   );
 
   if (paso.tipo === "pregunta") {
@@ -91,7 +91,10 @@ export async function correrTurnoDiagnostico(conversacionId: string): Promise<Re
         conversacionId,
         autor: AutorMensaje.SISTEMA,
         texto: paso.texto,
-        tag: "PitStop AI",
+        // El marcador (si hay) es para trackear guardrails internos de
+        // generarSiguientePaso (ver lib/services/llm.ts) — nunca es texto
+        // pensado para mostrarse.
+        tag: paso.marcador ?? "PitStop AI",
       },
     });
     return { texto: paso.texto };
@@ -114,6 +117,13 @@ export async function correrTurnoDiagnostico(conversacionId: string): Promise<Re
     tiempoEstimado: paso.tiempoEstimado,
   };
 
+  // El nombre que da el cliente en el chat es más confiable que el nombre
+  // de perfil de Telegram (puede ser un apodo o el de otra persona).
+  const actualizarNombreCliente = prisma.cliente.update({
+    where: { id: conversacion.clienteId },
+    data: { nombre: paso.nombreCliente },
+  });
+
   if (preOtExistente) {
     await prisma.$transaction([
       prisma.hipotesis.deleteMany({ where: { preOtId: preOtExistente.id } }),
@@ -130,6 +140,7 @@ export async function correrTurnoDiagnostico(conversacionId: string): Promise<Re
         where: { id: conversacionId },
         data: { estado: EstadoVehiculo.COMPLETADO },
       }),
+      actualizarNombreCliente,
     ]);
   } else {
     await prisma.$transaction([
@@ -147,6 +158,7 @@ export async function correrTurnoDiagnostico(conversacionId: string): Promise<Re
         where: { id: conversacionId },
         data: { estado: EstadoVehiculo.COMPLETADO },
       }),
+      actualizarNombreCliente,
     ]);
   }
 
