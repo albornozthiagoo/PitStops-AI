@@ -111,11 +111,16 @@ Todo el sistema de diseño (colores, tipografías, sombras, animaciones) vive en
    actualiza solo cuando llega un mensaje nuevo del cliente — hay que
    recargar la página. Falta poll o websocket sobre
    `app/api/conversaciones/[id]/mensajes`.
-3. **Árbol de preguntas por tipo de avería**: hoy `lib/services/llm.ts` usa un
-   único system prompt genérico, no una lógica distinta por tipo de falla.
-4. **n8n**: automatizar notificación al técnico cuando se genera una Pre-OT
-   (hoy solo se revalida el dashboard, sin push/aviso activo).
-5. **Deploy**: Vercel es la opción más directa para Next.js.
+3. **Árbol de preguntas por tipo de avería + datos obligatorios**: hoy
+   `lib/services/llm.ts` usa un único system prompt genérico, no una lógica
+   distinta por tipo de falla, y `patente`/`kilometraje` son opcionales (y no
+   se pide el nombre del cliente) cuando deberían ser obligatorios para la
+   Pre-OT.
+4. **Comandos del bot de Telegram**: iniciar conversación nueva y borrar una
+   conversación existente — ver `CLAUDE.md` (raíz, no está en el repo).
+5. **Notificación al técnico** cuando se genera una Pre-OT (hoy solo se
+   revalida el dashboard, sin push/aviso activo) — sin n8n, no se va a usar.
+6. **Deploy**: Vercel es la opción más directa para Next.js.
 
 ## API routes disponibles
 

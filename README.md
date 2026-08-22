@@ -46,7 +46,7 @@ Bot Telegram: [`PitStop AI - BOT`](http://t.me/PitStoppAI_bot)
 | Panel del taller     | Next.js 16 (App Router) + React + TypeScript + Tailwind                                        |
 | Canal con el cliente | Telegram Bot API (MVP) — WhatsApp Business en el anteproyecto                                  |
 | IA                   | Cliente genérico compatible con OpenAI, por default Gemini (free tier)                         |
-| Orquestación         | Next.js directo (webhook → motor de IA → Pre-OT); n8n queda fuera del camino crítico por ahora |
+| Orquestación         | Next.js directo (webhook → motor de IA → Pre-OT) — no se usa n8n                              |
 | Base de datos        | PostgreSQL + Prisma                                                                            |
 | Versionado           | GitHub                                                                                         |
 | Deploy               | Vercel                                                                                         |
@@ -78,8 +78,8 @@ El canal (Telegram), el motor de IA (con generación automática de Pre-OT) y el
 handoff técnico↔IA (backend + UI: tomar/liberar conversación, responder
 manual) ya funcionan de punta a punta. Falta autenticación real, que el visor
 de conversaciones se actualice solo cuando llega un mensaje nuevo (hoy hay que
-recargar la página), y la automatización con n8n (hoy Next.js hace todo el
-flujo directo).
+recargar la página), y el árbol de preguntas por tipo de avería. n8n no se va
+a usar — Next.js hace todo el flujo directo.
 
 <!-- El historial completo de decisiones/pivots vive en CLAUDE.md, que es
      contexto de desarrollo interno y no forma parte del repo publicado. -->
@@ -96,6 +96,6 @@ flujo directo).
 | Visor de conversación en vivo (auto-refresh)                        | No (hay que recargar la página)      |
 | Árbol dinámico de preguntas por tipo de avería                      | No (prompt único genérico por ahora) |
 | Autenticación real                                                  | No (login es un stub)                |
-| Envío automático al taller vía n8n                                  | No (Next.js hace el flujo directo)   |
+| Notificación automática al técnico al generar la Pre-OT             | No (sin n8n; se resolvería sin él)   |
 | Reconocimiento de fotos                                             | No (evolución futura)                |
 | Análisis de audio del motor                                         | No (evolución futura)                |
