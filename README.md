@@ -1,4 +1,6 @@
-# PitStops AI
+<p align="center">
+  <img src="web-app/public/logo-full.png" alt="PitStops AI" width="360">
+</p>
 
 Sistema inteligente de prediagnóstico conversacional para talleres mecánicos.
 
@@ -37,7 +39,7 @@ IA:      Cuando giras la llave, ¿qué sucede?
 Resultado → **Pre-OT #1482**: Gol Trend 2018 · hace clic al arrancar · urgencia
 media · posible causa: batería descargada · ~15 min · herramienta: multímetro.
 
-Bot Telegram: [`PitStop AI - BOT`](http://t.me/PitStoppAI_bot)
+Bot Telegram: [`PitStops AI - BOT`](http://t.me/PitStoppAI_bot)
 
 ## Stack
 

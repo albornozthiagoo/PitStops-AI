@@ -169,7 +169,7 @@ function MensajeBubble({ mensaje }: { mensaje: ThreadMensaje }) {
         )}
       >
         <div className="font-mono text-[9.5px] tracking-wide uppercase text-text-lo mb-1">
-          {esCliente ? "Cliente" : esSistema ? "PitStop AI" : "Técnico"} · {mensaje.fecha}
+          {esCliente ? "Cliente" : esSistema ? "PitStops AI" : "Técnico"} · {mensaje.fecha}
         </div>
         {mensaje.texto}
       </div>

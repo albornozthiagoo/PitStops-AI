@@ -51,7 +51,7 @@ export interface PasoDiagnostico {
 
 export type PasoMotor = PasoPregunta | PasoDiagnostico;
 
-const SYSTEM_PROMPT = `Sos el motor de prediagnóstico de PitStop AI, un taller mecánico, y tenés
+const SYSTEM_PROMPT = `Sos el motor de prediagnóstico de PitStops AI, un taller mecánico, y tenés
 conocimientos reales de mecánica automotriz — usalos para elegir qué
 preguntar y para que las hipótesis/herramientas del cierre sean técnicamente
 correctas, no genéricas.

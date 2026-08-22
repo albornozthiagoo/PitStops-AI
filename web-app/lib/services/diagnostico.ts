@@ -94,7 +94,7 @@ export async function correrTurnoDiagnostico(conversacionId: string): Promise<Re
         // El marcador (si hay) es para trackear guardrails internos de
         // generarSiguientePaso (ver lib/services/llm.ts) — nunca es texto
         // pensado para mostrarse.
-        tag: paso.marcador ?? "PitStop AI",
+        tag: paso.marcador ?? "PitStops AI",
       },
     });
     return { texto: paso.texto };
@@ -169,10 +169,10 @@ export async function correrTurnoDiagnostico(conversacionId: string): Promise<Re
   revalidatePath(`/preot/${vehiculoId}`);
 
   const cierre = preOtExistente
-    ? `Listo, actualizamos tu prediagnóstico (${codigo}) con esto que sumaste. Un técnico del taller lo va a revisar. ¡Gracias por escribirnos a PitStop AI!`
-    : `Listo, ya armamos tu prediagnóstico (${codigo}). Un técnico del taller lo va a revisar y te contacta a la brevedad. ¡Gracias por escribirnos a PitStop AI!`;
+    ? `Listo, actualizamos tu prediagnóstico (${codigo}) con esto que sumaste. Un técnico del taller lo va a revisar. ¡Gracias por escribirnos a PitStops AI!`
+    : `Listo, ya armamos tu prediagnóstico (${codigo}). Un técnico del taller lo va a revisar y te contacta a la brevedad. ¡Gracias por escribirnos a PitStops AI!`;
   await prisma.mensaje.create({
-    data: { conversacionId, autor: AutorMensaje.SISTEMA, texto: cierre, tag: "PitStop AI" },
+    data: { conversacionId, autor: AutorMensaje.SISTEMA, texto: cierre, tag: "PitStops AI" },
   });
 
   return {

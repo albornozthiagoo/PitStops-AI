@@ -12,7 +12,7 @@ const adapter = new PrismaPg({
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log("Sembrando datos de PitStop AI...");
+  console.log("Sembrando datos de PitStops AI...");
 
   const taller = await prisma.taller.create({
     data: { nombre: "Central Motors — Bahía 4", direccion: "Av. 4 de Julio 1234" },
@@ -160,7 +160,7 @@ async function main() {
           },
           {
             autor: AutorMensaje.SISTEMA,
-            tag: "PitStop AI",
+            tag: "PitStops AI",
             texto:
               "Empecemos por descartar lo más frecuente. ¿El ruido es tipo chirrido agudo o golpeteo grave? Y decime, ¿aparece con el pedal firme o se siente esponjoso?",
           },
@@ -170,7 +170,7 @@ async function main() {
           },
           {
             autor: AutorMensaje.SISTEMA,
-            tag: "PitStop AI · analizando patrón",
+            tag: "PitStops AI · analizando patrón",
             texto:
               "Con pedal firme y chirrido agudo constante, la hipótesis principal apunta a desgaste de pastillas con indicador metálico en contacto. Voy a correr el diagnóstico contra el historial de la unidad.",
             scanPct: 70,
@@ -265,7 +265,7 @@ async function main() {
           },
           {
             autor: AutorMensaje.SISTEMA,
-            tag: "PitStop AI",
+            tag: "PitStops AI",
             texto:
               "Dale. ¿Notó pérdida de potencia o consumo más alto cuando está encendido el testigo, o el auto anda igual?",
           },
@@ -275,7 +275,7 @@ async function main() {
           },
           {
             autor: AutorMensaje.SISTEMA,
-            tag: "PitStop AI · analizando patrón",
+            tag: "PitStops AI · analizando patrón",
             texto:
               "Testigo intermitente sin síntomas de manejo suele apuntar a algo del lado de emisiones/sensores más que mecánico. Voy a escanear los códigos guardados.",
             scanPct: 55,
@@ -329,7 +329,7 @@ async function main() {
           },
           {
             autor: AutorMensaje.SISTEMA,
-            tag: "PitStop AI",
+            tag: "PitStops AI",
             texto: "¿Hay algún testigo encendido en el tablero, o algún ruido nuevo del motor?",
           },
           {
@@ -338,7 +338,7 @@ async function main() {
           },
           {
             autor: AutorMensaje.SISTEMA,
-            tag: "PitStop AI · analizando patrón",
+            tag: "PitStops AI · analizando patrón",
             texto:
               "Pérdida de potencia solo en exigencia, sin testigos ni ruidos, apunta más a admisión/turbo que a algo eléctrico. Corriendo el diagnóstico contra el historial de la unidad.",
             scanPct: 60,

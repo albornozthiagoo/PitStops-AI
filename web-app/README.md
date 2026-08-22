@@ -1,4 +1,4 @@
-# PitStop AI
+# PitStops AI
 
 Backoffice del taller: panel Next.js que monitorea las conversaciones de
 Telegram en vivo, permite tomar/soltar el control de una conversación, y

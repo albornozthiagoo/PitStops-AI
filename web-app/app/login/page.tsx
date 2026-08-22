@@ -20,10 +20,10 @@ export default function LoginPage() {
         <ScanLine />
 
         <div className="flex items-center gap-3 mb-7">
-          <HexLogo />
+          <HexLogo size={48} />
           <div>
             <h1 className="text-[19px]">
-              PITSTOP <span className="text-action-orange">AI</span>
+              PITSTOPS <span className="text-action-orange">AI</span>
             </h1>
             <div className="font-mono text-[10px] tracking-[.14em] text-text-lo uppercase">
               Sistema de prediagnóstico
@@ -56,20 +56,8 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="font-mono text-[10.5px] text-titanium-500 leading-loose mt-[22px] border-t border-line-soft pt-3.5">
-          <div>
-            <span className="text-state-green">OK</span> · módulo de diagnóstico cargado
-          </div>
-          <div>
-            <span className="text-state-green">OK</span> · base de conocimiento sincronizada
-          </div>
-          <div>
-            · taller: <strong className="text-text-md">Central Motors — Bahía 4</strong>
-          </div>
-        </div>
-
-        <div className="mt-[22px] flex justify-between items-center font-mono text-[11px] text-text-lo">
-          <span>PitStop AI v2.4.1</span>
+        <div className="mt-[22px] flex justify-between items-center font-mono text-[11px] text-text-lo border-t border-line-soft pt-3.5">
+          <span>PitStops AI v2.4.1</span>
           <span className="flex items-center gap-1.5">
             <Led color="green" />
             Sistema en línea

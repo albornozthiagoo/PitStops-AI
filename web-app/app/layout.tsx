@@ -23,7 +23,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PitStop AI — Centro de Diagnóstico",
+  title: "PitStops AI — Centro de Diagnóstico",
   description: "Sistema de prediagnóstico inteligente para talleres mecánicos",
 };
 

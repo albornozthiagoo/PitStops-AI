@@ -42,7 +42,7 @@ type TelegramUpdate = {
   };
 };
 
-const MENSAJE_BIENVENIDA = `¡Hola! Soy el asistente de prediagnóstico de PitStop AI.
+const MENSAJE_BIENVENIDA = `¡Hola! Soy el asistente de prediagnóstico de PitStops AI.
 
 Te hago un par de preguntas cortas sobre el auto y la falla, y armamos un prediagnóstico para que el taller ya te espere sabiendo qué revisar. No reemplaza al mecánico — es para llegar con el diagnóstico adelantado.
 
