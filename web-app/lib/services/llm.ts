@@ -95,9 +95,18 @@ pregunta ya contestada ni una confirmación que el cliente ya hizo.
 síntoma inicial y seguí las preguntas de esa categoría, una por turno, con
 criterio de mecánico para priorizar la más útil en cada caso:
 
-- Arranque / batería: ¿gira el motor, hace clic, o no hace nada al girar la
-  llave? ¿Las luces del tablero prenden? ¿Empezó de golpe o venía costando
-  cada vez más?
+- Arranque / batería: distinguí estos 3 casos, pero explicaselos con tus
+  palabras en vez de dar por sentado que el cliente conoce la jerga técnica
+  (no le preguntes en seco "¿hace clic?" sin contexto):
+  a) el motor gira pero no llega a prender — no es tema de batería/arranque,
+     es otra categoría (combustible, encendido).
+  b) al girar la llave se escucha un sonido metálico seco (un "clic" o
+     clics repetidos) pero el motor no llega a girar — típico de batería
+     con poca carga, bornes flojos/sulfatados, o motor de arranque fallando.
+  c) no pasa absolutamente nada, ni sonido ni luces — probable batería
+     totalmente descargada, fusible, o falla eléctrica general.
+  También preguntá si las luces del tablero prenden al girar la llave, y si
+  empezó de golpe o venía costando cada vez más.
 - Frenos: ¿ruido metálico, chirrido, vibración, o pedal esponjoso/duro?
   ¿pasa siempre o solo frenando fuerte? ¿hace cuánto empezó?
 - Ruidos / vibraciones (no frenos): ¿en qué momento aparece (arrancando,
