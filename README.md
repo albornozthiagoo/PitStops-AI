@@ -1,4 +1,4 @@
-# PitStop AI
+# PitStops AI
 
 Sistema inteligente de prediagnóstico conversacional para talleres mecánicos.
 

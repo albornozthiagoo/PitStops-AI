@@ -15,7 +15,7 @@ async function main() {
   console.log("Sembrando datos de PitStop AI...");
 
   const taller = await prisma.taller.create({
-    data: { nombre: "Central Motors — Bahía 4", direccion: "Av. Siempre Viva 1234" },
+    data: { nombre: "Central Motors — Bahía 4", direccion: "Av. 4 de Julio 1234" },
   });
 
   const tecnico = await prisma.tecnico.create({
@@ -41,6 +41,12 @@ async function main() {
   });
   const clienteS10 = await prisma.cliente.create({
     data: { nombre: "Lucía Ferrari", telefono: "+54 11 5555-0104" },
+  });
+  const clienteTracker = await prisma.cliente.create({
+    data: { nombre: "Francisco", telefono: "+54 11 5555-0105" },
+  });
+  const cliente308 = await prisma.cliente.create({
+    data: { nombre: "Thiago", telefono: "+54 11 5555-0106" },
   });
 
   const amarok = await prisma.vehiculo.create({
@@ -99,6 +105,39 @@ async function main() {
       prioridad: Prioridad.BAJA,
       estado: EstadoVehiculo.COMPLETADO,
       clienteId: clienteS10.id,
+      tallerId: taller.id,
+    },
+  });
+
+  const tracker = await prisma.vehiculo.create({
+    data: {
+      patente: "HT492VD",
+      vin: "9GNAAP3H24C812345",
+      modelo: "Chevrolet Tracker 2023",
+      bahia: "B-03",
+      kilometraje: 35400,
+      sintoma: "Testigo de motor encendido",
+      prioridad: Prioridad.MEDIA,
+      // DIAGNOSTICANDO (no EN_COLA) porque le damos una conversación +
+      // Pre-OT ya generada más abajo — EN_COLA es el estado de "todavía sin
+      // arrancar el diagnóstico" (ver Hilux).
+      estado: EstadoVehiculo.DIAGNOSTICANDO,
+      clienteId: clienteTracker.id,
+      tallerId: taller.id,
+    },
+  });
+
+  const peugeot308 = await prisma.vehiculo.create({
+    data: {
+      patente: "KM317BS",
+      vin: "VF3LCVXY32B678901",
+      modelo: "Peugeot 308 2020",
+      bahia: "B-05",
+      kilometraje: 72150,
+      sintoma: "Pérdida de potencia en subida",
+      prioridad: Prioridad.BAJA,
+      estado: EstadoVehiculo.DIAGNOSTICANDO,
+      clienteId: cliente308.id,
       tallerId: taller.id,
     },
   });
@@ -203,6 +242,133 @@ async function main() {
           { nombre: "Elevador de 2 columnas" },
           { nombre: "Torquímetro 80-120 Nm" },
           { nombre: "Kit pastillas OEM" },
+        ],
+      },
+    },
+  });
+
+  // ---- Conversación + Pre-OT del Tracker (Francisco) ----
+  const convTracker = await prisma.conversacion.create({
+    data: {
+      titulo: "Chevrolet Tracker · B-03",
+      subtitulo: "Testigo de motor encendido",
+      estado: EstadoVehiculo.DIAGNOSTICANDO,
+      clienteId: clienteTracker.id,
+      vehiculoId: tracker.id,
+      tecnicoId: tecnico.id,
+      mensajes: {
+        create: [
+          {
+            autor: AutorMensaje.TECNICO,
+            texto:
+              "El cliente dice que se le enciende el testigo de motor de vez en cuando, sobre todo en ruta, y después se apaga solo. ¿Empezamos?",
+          },
+          {
+            autor: AutorMensaje.SISTEMA,
+            tag: "PitStop AI",
+            texto:
+              "Dale. ¿Notó pérdida de potencia o consumo más alto cuando está encendido el testigo, o el auto anda igual?",
+          },
+          {
+            autor: AutorMensaje.TECNICO,
+            texto: "Dice que anda igual, no nota nada raro en el manejo.",
+          },
+          {
+            autor: AutorMensaje.SISTEMA,
+            tag: "PitStop AI · analizando patrón",
+            texto:
+              "Testigo intermitente sin síntomas de manejo suele apuntar a algo del lado de emisiones/sensores más que mecánico. Voy a escanear los códigos guardados.",
+            scanPct: 55,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.preOT.create({
+    data: {
+      codigo: "PRE-OT #4522",
+      prioridad: Prioridad.MEDIA,
+      sintomaPrincipal:
+        "Testigo de check engine intermitente: se enciende en ruta y se apaga solo después de un rato. Sin pérdida de potencia ni ruidos percibidos por el cliente.",
+      tiempoEstimado: "30–45 min",
+      vehiculoId: tracker.id,
+      conversacionId: convTracker.id,
+      hipotesis: {
+        create: [
+          { nombre: "Sensor de oxígeno con lectura errática", probabilidad: 65 },
+          { nombre: "Tapa de combustible mal sellada", probabilidad: 38 },
+          { nombre: "Bobina de encendido con falla intermitente", probabilidad: 22 },
+        ],
+      },
+      herramientas: {
+        create: [
+          { nombre: "Escáner OBD-II" },
+          { nombre: "Multímetro" },
+          { nombre: "Kit de bujías" },
+        ],
+      },
+    },
+  });
+
+  // ---- Conversación + Pre-OT del Peugeot 308 (Thiago) ----
+  const conv308 = await prisma.conversacion.create({
+    data: {
+      titulo: "Peugeot 308 · B-05",
+      subtitulo: "Pérdida de potencia en subida",
+      estado: EstadoVehiculo.DIAGNOSTICANDO,
+      clienteId: cliente308.id,
+      vehiculoId: peugeot308.id,
+      tecnicoId: tecnico.id,
+      mensajes: {
+        create: [
+          {
+            autor: AutorMensaje.TECNICO,
+            texto:
+              "El cliente reporta que en subidas pronunciadas el auto pierde fuerza, como si no acompañara. En plano anda normal.",
+          },
+          {
+            autor: AutorMensaje.SISTEMA,
+            tag: "PitStop AI",
+            texto: "¿Hay algún testigo encendido en el tablero, o algún ruido nuevo del motor?",
+          },
+          {
+            autor: AutorMensaje.TECNICO,
+            texto: "No, ningún testigo. Tampoco ruidos raros.",
+          },
+          {
+            autor: AutorMensaje.SISTEMA,
+            tag: "PitStop AI · analizando patrón",
+            texto:
+              "Pérdida de potencia solo en exigencia, sin testigos ni ruidos, apunta más a admisión/turbo que a algo eléctrico. Corriendo el diagnóstico contra el historial de la unidad.",
+            scanPct: 60,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.preOT.create({
+    data: {
+      codigo: "PRE-OT #4538",
+      prioridad: Prioridad.BAJA,
+      sintomaPrincipal:
+        "Pérdida de potencia notoria en pendientes pronunciadas; el motor no responde igual en subida. Sin ruidos ni testigos encendidos, anda normal en plano.",
+      tiempoEstimado: "40–55 min",
+      vehiculoId: peugeot308.id,
+      conversacionId: conv308.id,
+      hipotesis: {
+        create: [
+          { nombre: "Filtro de aire obstruido", probabilidad: 58 },
+          { nombre: "Presión de turbo insuficiente", probabilidad: 34 },
+          { nombre: "Sensor MAP descalibrado", probabilidad: 19 },
+        ],
+      },
+      herramientas: {
+        create: [
+          { nombre: "Escáner OBD-II" },
+          { nombre: "Manómetro de presión de turbo" },
+          { nombre: "Filtro de aire nuevo" },
         ],
       },
     },

@@ -40,6 +40,13 @@ enum RolTecnico {
   ADMIN
 }
 
+// Quién puede responder en una conversación de WhatsApp en un momento dado:
+// la IA (motor de diagnóstico) o un técnico que la tomó a mano.
+enum ControladoPor {
+  IA
+  TECNICO
+}
+
 // ---------------- Taller / usuarios ----------------
 
 model Taller {
@@ -138,6 +145,10 @@ model Conversacion {
 
   tecnico   Tecnico? @relation(fields: [tecnicoId], references: [id])
   tecnicoId String?
+
+  // Por default la IA lleva la conversación. Un técnico puede "tomarla" y
+  // entonces la IA deja de responder hasta que la libere.
+  controladoPor ControladoPor @default(IA)
 
   mensajes Mensaje[]
   preOt    PreOT?

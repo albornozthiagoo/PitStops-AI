@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { AutorMensaje, EstadoVehiculo } from "@/generated/prisma/client";
+import { AutorMensaje, ControladoPor, EstadoVehiculo } from "@/generated/prisma/client";
+import { correrTurnoDiagnostico } from "@/lib/services/diagnostico";
+import { enviarMensajeWhatsapp } from "@/lib/whatsapp";
 
 // Webhook de WhatsApp Cloud API (Meta). Reemplaza el chat en vivo que tenía
 // la UI: el cliente le escribe al número de WhatsApp del taller, acá se
@@ -136,8 +138,24 @@ async function procesarMensajeEntrante(msg: WhatsappMensaje, contacto?: Whatsapp
     data: { updatedAt: new Date() },
   });
 
-  // TODO (roadmap punto 4 en pitstop-ai-context.md): acá se dispara el motor
-  // de diagnóstico contra el historial de mensajes de `conversacion`. Cuando
-  // devuelva hipótesis/herramientas, crear el PreOT (POST /api/preot) y
-  // avisarle al cliente con enviarMensajeWhatsapp(telefono, "...").
+  // Si un técnico tomó la conversación a mano, la IA no responde más: sus
+  // mensajes salen por WhatsApp directo, sin pasar por acá.
+  if (conversacion.controladoPor !== ControladoPor.IA) return;
+
+  try {
+    const respuesta = await correrTurnoDiagnostico(conversacion.id);
+    await enviarMensajeWhatsapp(telefono, respuesta);
+  } catch (error) {
+    // Nunca dejamos al cliente sin respuesta, aunque el motor de
+    // diagnóstico o el envío por WhatsApp fallen.
+    console.error("[webhook whatsapp] error en el motor de diagnóstico:", error);
+    try {
+      await enviarMensajeWhatsapp(
+        telefono,
+        "Estamos teniendo un problema técnico procesando tu mensaje. En breve te responde alguien del taller."
+      );
+    } catch (envioError) {
+      console.error("[webhook whatsapp] no se pudo enviar el mensaje de fallback:", envioError);
+    }
+  }
 }

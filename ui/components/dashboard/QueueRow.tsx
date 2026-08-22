@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Badge, Button, Led } from "@/components/ui";
-import { EstadoVehiculo, Prioridad, type Vehiculo } from "@/generated/prisma/client";
+import { EstadoVehiculo, Prioridad, type Vehiculo } from "@/generated/prisma/browser";
 
 const ESTADO_META: Record<EstadoVehiculo, { led: "green" | "orange" | "red"; label: string }> = {
   [EstadoVehiculo.DIAGNOSTICANDO]: { led: "red", label: "Diagnosticando" },
@@ -19,7 +19,7 @@ export function QueueRow({ vehiculo }: { vehiculo: Vehiculo }) {
   const accion =
     vehiculo.estado === EstadoVehiculo.COMPLETADO
       ? { href: "/historial", label: "Historial" }
-      : { href: "/preot", label: "Ver diagnóstico" };
+      : { href: `/preot/${vehiculo.id}`, label: "Ver diagnóstico" };
 
   return (
     <div className="grid grid-cols-[90px_1.3fr_1fr_0.8fr_0.8fr_100px] gap-3 items-center px-4 py-3.5 border-b border-line-soft hover:bg-steel-800 transition-colors">
