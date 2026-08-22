@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import twilio from "twilio";
 import { prisma } from "@/lib/prisma";
+import { enviarMensajeWhatsapp } from "@/lib/whatsapp";
+import { generarRespuestaDiagnostico } from "@/lib/diagnostico";
 import { AutorMensaje, EstadoVehiculo } from "@/generated/prisma/client";
 
 // Webhook de WhatsApp vía Twilio (Sandbox). Reemplaza el chat en vivo que
@@ -111,8 +113,29 @@ async function procesarMensajeEntrante(params: Record<string, string>) {
     data: { updatedAt: new Date() },
   });
 
-  // TODO (roadmap punto 4 en claude.md): acá se dispara el motor de
-  // diagnóstico contra el historial de mensajes de `conversacion`. Cuando
-  // devuelva hipótesis/herramientas, crear el PreOT (POST /api/preot) y
-  // avisarle al cliente con enviarMensajeWhatsapp(telefono, "...").
+  const { texto, listo } = await generarRespuestaDiagnostico(conversacion.id);
+
+  await prisma.mensaje.create({
+    data: {
+      conversacionId: conversacion.id,
+      autor: AutorMensaje.SISTEMA,
+      texto,
+    },
+  });
+
+  try {
+    await enviarMensajeWhatsapp(telefono, texto);
+  } catch (error) {
+    // Ya persistimos la respuesta en Mensaje aunque el envío falle, así el
+    // técnico la ve en el panel — pero el cliente se queda sin el WhatsApp.
+    // Sin cola de reintentos todavía (fuera de alcance de este paso).
+    console.error("[webhook whatsapp] error enviando respuesta por WhatsApp:", error);
+  }
+
+  // TODO (roadmap punto 6 en claude.md): cuando `listo` es true, generar la
+  // PreOT (hipótesis + herramientas) a partir del historial y notificar al
+  // técnico en vez de solo loguearlo.
+  if (listo) {
+    console.log(`[webhook whatsapp] conversación ${conversacion.id} lista para Pre-OT`);
+  }
 }
