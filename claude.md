@@ -3,14 +3,15 @@
 
 ## Contexto del proyecto
 
-MVP a 5 días. El canal real es **el WhatsApp Business que el taller ya usa**. El
-cliente le escribe ahí como siempre ("el auto no arranca"); del otro lado, en vez
-de contestar el mecánico, contesta la IA: hace las preguntas necesarias según un
-árbol de decisión dinámico hasta identificar el problema, y cuando tiene
-suficiente información genera una **Pre-OT** (preorden de trabajo) estructurada
-—síntoma, urgencia, posibles causas, tiempo estimado, herramientas sugeridas— y
-se la avisa al técnico. No reemplaza al mecánico: estructura la información
-antes de que intervenga.
+MVP a 5 días. El canal real iba a ser **el WhatsApp Business que el taller ya
+usa** (ver pivot de canal más abajo: para el MVP se reemplazó por un bot de
+Telegram). El cliente le escribe ahí como siempre ("el auto no arranca"); del
+otro lado, en vez de contestar el mecánico, contesta la IA: hace las preguntas
+necesarias según un árbol de decisión dinámico hasta identificar el problema, y
+cuando tiene suficiente información genera una **Pre-OT** (preorden de trabajo)
+estructurada —síntoma, urgencia, posibles causas, tiempo estimado, herramientas
+sugeridas— y se la avisa al técnico. No reemplaza al mecánico: estructura la
+información antes de que intervenga.
 
 Reglas de producto no negociables:
 - **No intrusivo**: si el técnico se mete a escribir en la conversación en
@@ -25,9 +26,10 @@ Stack definido en el anteproyecto: Next.js + React (panel del taller), OpenAI
 GPT (IA conversacional), **WhatsApp vía Twilio (Sandbox)** como canal con el
 cliente, n8n (orquestación: WhatsApp ↔ IA ↔ base ↔ notificación), Prisma +
 PostgreSQL (SQLite solo si hace falta prototipar rápido), GitHub (versionado),
-Vercel (deploy).
+Vercel (deploy). Ver pivots de canal e IA más abajo — en la práctica el MVP
+terminó en Telegram + Gemini, no WhatsApp/Twilio + OpenAI.
 
-**Pivot de canal (2026-08-20)**: el plan original elegía WhatsApp Cloud API
+**Pivot de canal #1 (2026-08-20)**: el plan original elegía WhatsApp Cloud API
 (Meta) directa por sobre un BSP, pero el alta de número de prueba en la
 consola de Meta quedó bloqueada por un bug del wizard (la pantalla se
 reiniciaba sin mostrar el número, probado en múltiples navegadores/redes/
@@ -40,19 +42,49 @@ Console. Igual que con Meta, pasar a un número de **producción** real
 requeriría eventualmente verificación de negocio en Meta (Twilio es un BSP
 sobre la misma plataforma) — no bloquea el MVP.
 
+**Pivot de canal #2, WhatsApp/Twilio → Telegram (2026-08-22)**: con la
+recepción de mensajes ya funcionando end-to-end (ver smoke test 2026-08-21),
+la cuenta de Twilio resultó ser *trial* y las cuentas trial de Twilio **no
+pueden mandar mensajes de WhatsApp de texto libre bajo ninguna circunstancia**
+— ni siquiera dentro de la ventana de 24hs de sesión con el cliente (error
+`21654 ContentSid Required`, confirmado reproduciendo el envío directo contra
+la API). Solo dejan usar 3 plantillas fijas de Twilio (turnos, notificación de
+pedido, código de verificación), inútiles para una conversación dinámica.
+Arreglarlo requiere cargar mínimo US$20 para upgradear la cuenta, algo que no
+tiene sentido pagar para un MVP. Se pivotea a **Telegram Bot API**: gratis, sin
+restricción de mensajes de texto libre, sin necesidad de verificación de
+negocio ni número de teléfono real. El trade-off es que el producto real del
+anteproyecto es WhatsApp (que es lo que el taller ya usa) — Telegram es una
+sustitución de canal solo para demostrar el flujo completo en el MVP, no el
+canal final pensado para producción. El pipeline de negocio (`Conversacion`,
+`Mensaje`, motor de diagnóstico, Pre-OT) es 100% agnóstico al canal, así que
+volver a WhatsApp más adelante (vía Twilio pago o Meta Cloud API directa) es
+solo cuestión de reimplementar `lib/telegram.ts` +
+`app/api/webhooks/telegram/route.ts`, sin tocar el resto.
+
+**Pivot de IA, OpenAI → Gemini (2026-08-21/22)**: la cuenta de OpenAI no tenía
+crédito cargado (error `429 insufficient_quota`) y, para un MVP, no tiene
+sentido pagar. Se pivotea a **Gemini** (Google AI Studio) vía su endpoint
+compatible con la API de OpenAI (`generativelanguage.googleapis.com/v1beta/openai/`),
+así que el código en `lib/diagnostico.ts` es casi idéntico — mismo SDK
+`openai`, solo cambia `baseURL`/`apiKey`/nombre de modelo (`gemini-2.5-flash`).
+Free tier: 15 RPM / 1500 mensajes por día, de sobra para el MVP.
+
 ## Cómo funciona (flujo real)
 
-1. Cliente escribe al WhatsApp Business del taller.
-2. El mensaje entra por webhook a n8n.
-3. n8n revisa el estado de esa conversación en la base:
-   - Si nadie la "tomó" → la pasa a la IA (GPT), que responde por WhatsApp.
+1. Cliente le escribe al bot de Telegram del taller (en el anteproyecto
+   original era WhatsApp Business — ver pivot de canal #2).
+2. El mensaje entra por webhook a `app/api/webhooks/telegram` (Next.js
+   directo; n8n queda fuera del camino crítico, ver punto 3.D/8).
+3. El webhook revisa el estado de esa conversación en la base:
+   - Si nadie la "tomó" → la pasa a la IA (Gemini), que responde por Telegram.
    - Si el técnico ya la tomó manualmente → la IA no interviene, el mensaje
      solo se registra para que el técnico lo vea en el panel.
 4. La IA repite preguntas dirigidas hasta juntar lo mínimo necesario (vehículo,
    síntoma, contexto, urgencia).
 5. Al cerrar el interrogatorio, se genera la Pre-OT y se notifica al técnico
    (panel Next.js + aviso, ej. mensaje interno o notificación).
-6. El técnico puede intervenir en cualquier momento desde WhatsApp o desde el
+6. El técnico puede intervenir en cualquier momento desde Telegram o desde el
    panel ("tomar conversación"); a partir de ahí la IA queda en pausa para ese
    chat hasta que el técnico la libere o se cierre el caso.
 
@@ -72,29 +104,36 @@ Ya existe un scaffold de Next.js 14 + Prisma con:
 
 ⚠️ `chat/page.tsx` hoy simula que el **técnico** tipea los mensajes del cliente
 en un input dentro del panel. Eso ya no corresponde al flujo real (ver arriba):
-el cliente escribe por WhatsApp y la IA responde ahí; el panel debe pasar a ser
+el cliente escribe por Telegram y la IA responde ahí; el panel debe pasar a ser
 un visor con opción de "tomar" la conversación (punto 5 del roadmap).
 
-Lo que falta es conectar todo esto al canal de WhatsApp, un motor de IA real,
+Lo que falta es conectar todo esto al canal de mensajería, un motor de IA real,
 autenticación real, automatización con n8n y despliegue. Ese es el foco de los
 pasos de abajo.
 
-**Dónde quedamos (2026-08-21)**: env vars cargadas, DB migrada/sembrada, y el
-canal de WhatsApp probado end-to-end (mensaje real → webhook → guardado en
-Postgres) — ver detalle en puntos 1 y 3.A/3.B. Todavía no hay respuesta
-automática (motor conversacional, punto 4) ni login funcional (punto 2, el
-seed tiene un password placeholder). Próximo paso lógico sugerido: punto 4
-(motor conversacional) para que la IA le conteste algo al cliente, o punto 2
-(login) — quedó pendiente de decidir con el usuario cuál va primero.
+**Dónde quedamos (2026-08-22)**: pivot completo de canal (WhatsApp/Twilio →
+Telegram, ver pivot #2) y de IA (OpenAI → Gemini) por costo — ninguno de los
+dos tenía free tier utilizable para un MVP. Motor conversacional (punto 4)
+andando con Gemini: junta los 4 datos por preguntas dirigidas y devuelve
+JSON `{mensaje, listo}`, con fallback a mensaje genérico si el modelo falla
+(nunca deja al cliente sin respuesta). El webhook de Telegram
+(`app/api/webhooks/telegram/route.ts`) ya está escrito y compila, pero
+**todavía no probado end-to-end** — falta: crear el bot con @BotFather,
+cargar `TELEGRAM_BOT_TOKEN`/`TELEGRAM_WEBHOOK_SECRET` en `ui/.env`, y
+registrar el webhook (`setWebhook` contra la URL pública de ngrok/Vercel).
+Login todavía no funcional (punto 2, el seed tiene password placeholder).
+Próximo paso lógico: terminar de dar de alta el bot de Telegram y correr el
+smoke test end-to-end (equivalente al que se hizo con Twilio el 2026-08-21).
 
 ## Pasos para desarrollar la web correctamente
 
 ### 1. Fundamentos
 - [x] Confirmar variables de entorno necesarias (`DATABASE_URL`, `DIRECT_URL`,
-      `OPENAI_API_KEY`, credenciales de Twilio) y documentarlas en
-      `ui/.env.example` — cargadas en `ui/.env` (2026-08-21), Supabase como
-      Postgres. Credenciales de n8n todavía no aplica (n8n sigue fuera del
-      camino crítico, ver punto 3.D).
+      `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`/`TELEGRAM_WEBHOOK_SECRET`) y
+      documentarlas en `ui/.env.example` — Supabase como Postgres. Credenciales
+      de n8n todavía no aplica (n8n sigue fuera del camino crítico, ver punto
+      3.D). ⚠️ `TELEGRAM_BOT_TOKEN`/`TELEGRAM_WEBHOOK_SECRET` son placeholders
+      vacíos en `ui/.env` — falta crear el bot (ver punto 3.A).
 - [x] Correr `prisma migrate dev` contra una base Postgres real (local o Supabase)
       y `db:seed` para tener datos de prueba consistentes con `lib/types.ts`.
       Hecho 2026-08-21 contra Supabase: sin migraciones pendientes, `prisma
@@ -111,105 +150,89 @@ seed tiene un password placeholder). Próximo paso lógico sugerido: punto 4
 - [ ] Proteger las rutas de `(dashboard)` para que requieran sesión.
 - [ ] Mostrar iniciales/rol del técnico logueado en el Topbar (ya hay componente).
 
-### 3. Canal de WhatsApp — Twilio WhatsApp Sandbox + n8n
+### 3. Canal de Telegram — Bot API + n8n
 
-**A. Alta en Twilio**
-- [x] Crear cuenta en [console.twilio.com](https://console.twilio.com).
-- [x] Anotar **Account SID** y **Auth Token** (Dashboard principal) — guardados
-      en `ui/.env` (nunca en el repo; `ui/.env.example` tiene las claves sin
-      valores).
-- [x] Activar el sandbox: *Messaging → Try it out → Send a WhatsApp message*.
-      Anotar el **número de sandbox** (`whatsapp:+14155238886`, es el mismo
-      para todas las cuentas) y el **join code** propio.
-- [x] Unir el/los número(s) de teléfono personal(es) que van a hacer de
-      "cliente" de prueba: desde WhatsApp, mandarle `join <code>` al número de
-      sandbox. Se puede sumar más de un número repitiendo el mismo join code.
-      A diferencia de Meta (máx. 5 destinatarios verificados), acá no hay un
-      límite duro, pero cada sesión de sandbox expira a los 3 días de
-      inactividad y hay que volver a unirse.
-      Nota: **no** confundir con *"Send a business-initiated message"* en
-      Console — eso simula al taller escribiendo primero (mensaje con
-      plantilla) y no pasa por el webhook de la misma forma. El smoke test
-      real es mandar el WhatsApp desde el celular del "cliente" al número de
-      sandbox, como cualquier chat.
+> Nota histórica: la implementación anterior sobre Twilio WhatsApp Sandbox
+> (alta de cuenta, webhook, envío) llegó a funcionar de punta a punta para
+> **recibir** mensajes (ver pivot de canal #1 y #2 más arriba), pero se
+> abandonó porque las cuentas trial de Twilio no dejan mandar respuestas de
+> texto libre. Los pasos A-E de abajo son la versión Telegram, escrita desde
+> cero reemplazando esos archivos.
+
+**A. Alta del bot**
+- [ ] Desde la app de Telegram, hablarle a **@BotFather** → `/newbot` → elegir
+      nombre y username (debe terminar en `bot`, ej. `pitstop_ai_bot`).
+      BotFather devuelve el **token** del bot — pegarlo en
+      `TELEGRAM_BOT_TOKEN` en `ui/.env` (nunca en el repo).
+- [ ] Definir un valor random propio para `TELEGRAM_WEBHOOK_SECRET` (no lo da
+      Telegram, lo inventamos nosotros — cualquier string de 1-256 caracteres
+      A-Z/a-z/0-9/_/-) y cargarlo también en `ui/.env`.
+- [ ] A diferencia de Twilio, no hace falta "unirse" con join code — cualquiera
+      que le escriba al bot por su username ya genera un `chat.id` válido.
 
 **B. Webhook**
-- [x] Implementado en `ui/app/api/webhooks/whatsapp/route.ts` (Next.js, no
-      n8n) — Twilio no tiene handshake GET como Meta, así que no hace falta
-      Verify Token; la firma entrante se valida con `TWILIO_AUTH_TOKEN` +
-      header `X-Twilio-Signature` vía `twilio.validateRequest`.
-- [x] Exponer el endpoint público: en local con `ngrok http 3000` (o el
-      dominio de Vercel en producción) y cargar esa URL + `/api/webhooks/whatsapp`
-      en Twilio Console → *WhatsApp Sandbox Settings* → **"WHEN A MESSAGE
-      COMES IN"** (método `POST`).
-- [x] Ojo con ngrok: `validateRequest` firma contra la URL pública exacta: el
-      código ya usa los headers `x-forwarded-proto`/`x-forwarded-host` para
-      reconstruirla en vez de confiar en `req.url` a ciegas, pero si falla la
-      validación en dev, confirmar que la URL cargada en Twilio coincide
-      carácter a carácter con la del túnel.
-
-**Smoke test end-to-end confirmado (2026-08-21)**: `npm run dev` (puerto 3000)
-+ `ngrok http 3000` corriendo local, URL de sandbox cargada en Twilio Console.
-Mensaje real de WhatsApp ("el auto no arranca") recibido → `POST
-/api/webhooks/whatsapp 200` → verificado en la base: se creó `Cliente`
-(teléfono `+549...`, upsert por número), `Conversacion` (`EN_COLA`) y
-`Mensaje` (`autor: CLIENTE`, con `waMessageId` de Twilio). El pipeline de
-recepción y persistencia funciona de punta a punta. **Falta la respuesta**:
-hoy el webhook solo guarda, no contesta nada — eso depende del motor
-conversacional (punto 4, todavía sin empezar).
-⚠️ Nota de infra dev: en este entorno, `npm run dev` y `ngrok` corridos con
-`run_in_background` a veces reportan "completado"/exit code apenas arrancan
-aunque el proceso siga vivo de fondo (el wrapper de shell se desprende) — no
-asumir que murieron solo por ese aviso; confirmar con `netstat`/intentando
-levantar de nuevo (falla con "puerto ocupado" / "endpoint ya online" si
-siguen corriendo) antes de relanzar.
+- [x] Implementado en `ui/app/api/webhooks/telegram/route.ts` — recibe el
+      `Update` de Telegram como JSON (no urlencoded como Twilio). La validación
+      de origen usa el header `X-Telegram-Bot-Api-Secret-Token` comparado
+      contra `TELEGRAM_WEBHOOK_SECRET` (mecanismo propio de Telegram, no hay
+      firma HMAC como en Twilio/Meta).
+- [ ] Exponer el endpoint público: `ngrok http 3000` en local (o el dominio de
+      Vercel en producción) y registrar la URL con una llamada a
+      `POST https://api.telegram.org/bot<token>/setWebhook` pasando `url` y
+      `secret_token` — a diferencia de Twilio, esto no se hace clickeando en
+      una consola, es una llamada a la API (se puede hacer con `curl`).
 
 **C. Envío de mensajes**
-- [x] Implementado en `ui/lib/whatsapp.ts` — usa el SDK oficial `twilio` con
-      `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_WHATSAPP_NUMBER`
-      para mandar mensajes salientes vía `client.messages.create`.
+- [x] Implementado en `ui/lib/telegram.ts` — `fetch` directo a
+      `POST https://api.telegram.org/bot<token>/sendMessage` con
+      `{chat_id, text}`. No hace falta SDK, la Bot API es REST simple.
 
 **D. n8n (orquestación, opcional para el smoke test inicial)**
-- [ ] A diferencia del nodo "WhatsApp Trigger" nativo de Meta, Twilio **no**
-      tiene trigger propio en n8n para mensajes entrantes — el webhook de
-      Next.js (punto B) ya cubre la recepción, así que n8n entra recién para
-      orquestar el resto (IA, notificación al técnico) o se lo puede dejar
-      fuera del camino crítico si el webhook de Next.js hace todo el flujo
-      directo.
-- [ ] Si se usa n8n igual: nodo Webhook genérico (no "WhatsApp Trigger") →
-      lógica de handoff/IA → nodo HTTP Request contra la API de Twilio (o
-      contra `enviarMensajeWhatsapp` expuesto como endpoint interno).
+- [ ] Igual que con Twilio: no hay nodo trigger nativo de Telegram para este
+      flujo custom — el webhook de Next.js (punto B) ya cubre la recepción, así
+      que n8n entra recién para orquestar el resto (notificación al técnico) o
+      se lo puede dejar fuera del camino crítico si el webhook de Next.js hace
+      todo el flujo directo (que es lo que pasa hoy).
 
 **E. Modelo de datos**
 - [ ] Agregar al schema (`Conversacion`) un campo de **modo/handoff**
       (ej. `controladaPor: IA | TECNICO`) para saber si la IA puede responder
       o si el técnico tomó el chat — hoy `EstadoVehiculo` no cubre esto.
-- [x] Guardar el número de WhatsApp del cliente en `Cliente.telefono` (ya
-      existe en el schema) — el webhook ya lo hace vía `upsert`, guardando el
-      número sin el prefijo `whatsapp:`.
+- [x] Guardar el `chat.id` de Telegram del cliente en `Cliente.telefono` (ya
+      existe en el schema, se reutiliza el campo aunque ya no sea un teléfono
+      real) — el webhook lo hace vía `upsert`. `Mensaje.waMessageId` también se
+      reutiliza como id externo genérico (`tg:<update_id>`) para dedupe.
 
 ### 4. Motor conversacional (núcleo del producto)
 - [ ] Diseñar el árbol de preguntas dinámico por tipo de avería (arranque, frenos,
-      ruidos, electricidad, etc.) — puede vivir como config/JSON versionado en el repo
-      o como prompt estructurado para GPT.
-- [ ] Integrar OpenAI GPT: dado el historial de `Mensaje` de esa conversación,
-      decidir la siguiente pregunta o si ya hay info suficiente para cerrar el
-      interrogatorio. Debe repreguntar ante respuestas ambiguas en vez de asumir.
-- [ ] Persistir cada turno en `Mensaje` (autor SISTEMA/TECNICO, texto, tag opcional)
-      tanto si lo escribe la IA como si lo escribe el técnico por WhatsApp directo.
+      ruidos, electricidad, etc.) — hoy `lib/diagnostico.ts` tiene un prompt
+      fijo que junta 4 datos genéricos (vehículo, síntoma, contexto, urgencia),
+      no un árbol distinto por tipo de avería todavía.
+- [x] Integrar Gemini (pivot desde OpenAI GPT, ver pivot de IA más arriba):
+      dado el historial de `Mensaje` de esa conversación, decide la siguiente
+      pregunta o si ya hay info suficiente para cerrar el interrogatorio.
+      Repregunta ante respuestas ambiguas en vez de asumir (instruido en el
+      system prompt). Implementado en `lib/diagnostico.ts` +
+      `lib/gemini.ts`.
+- [x] Persistir cada turno en `Mensaje` (autor SISTEMA, texto) — implementado
+      en el webhook de Telegram. Falta el caso TECNICO (cuando el técnico
+      escribe directo por Telegram, ver punto 5).
 - [ ] Definir el prompt/función que clasifica urgencia (`Prioridad`: CRITICA/MEDIA/BAJA)
       a partir de las respuestas.
-- [ ] Manejo de fallos: si GPT o WhatsApp fallan, reintentar o degradar a una
-      respuesta genérica ("en breve te responde el taller") en vez de dejar al
-      cliente sin respuesta — nunca debe fallar en silencio.
+- [x] Manejo de fallos: si Gemini falla, degrada a una respuesta genérica ("en
+      breve te responde el taller") en vez de dejar al cliente sin respuesta —
+      confirmado funcionando (probado con la cuenta de OpenAI sin crédito antes
+      del pivot). Falta el caso simétrico si falla el envío por Telegram: hoy
+      solo se loguea el error, la respuesta queda guardada en `Mensaje` pero no
+      le llega al cliente.
 
 ### 5. Handoff técnico ↔ IA y panel en vivo
 - [ ] Reemplazar los mocks de `chat/page.tsx`: pasa de ser un input manual del
-      síntoma a un **visor en vivo** de la conversación real de WhatsApp
+      síntoma a un **visor en vivo** de la conversación real de Telegram
       (poll o websocket sobre `app/api/conversaciones/[id]/mensajes`).
 - [ ] Botón "Tomar conversación" / "Devolver a la IA" que actualiza el campo
       de handoff — mientras el técnico la tiene tomada, sus mensajes salen por
-      WhatsApp normal y la IA no contesta.
+      Telegram normal (vía `enviarMensajeTelegram`) y la IA no contesta.
 - [ ] Indicador visual claro de quién está contestando en cada chat (IA vs.
       técnico) en la lista de conversaciones.
 - [ ] Manejar el cierre del interrogatorio: cuando la IA determina que ya tiene
@@ -217,8 +240,9 @@ siguen corriendo) antes de relanzar.
 
 ### 6. Generación de la Pre-OT
 - [ ] Endpoint que, a partir de una `Conversacion` cerrada, genera `PreOT` +
-      `Hipotesis` (con probabilidad) + `HerramientaSugerida` vía GPT (salida
-      estructurada/JSON mode) y persiste con Prisma.
+      `Hipotesis` (con probabilidad) + `HerramientaSugerida` vía Gemini (salida
+      estructurada/JSON mode, mismo patrón que `lib/diagnostico.ts`) y persiste
+      con Prisma.
 - [ ] Conectar `preot/page.tsx` a datos reales en vez de `mock-data.ts`.
 - [ ] Notificación al técnico cuando se genera (ver punto 8 de n8n).
 - [ ] Flujo de aprobación: Pre-OT aprobada por un `Tecnico` → crea `OrdenTrabajo`.
@@ -231,14 +255,14 @@ siguen corriendo) antes de relanzar.
 - [ ] Vista de vehículos conectada a `Vehiculo` (estado, bahía, prioridad).
 
 ### 8. Automatización con n8n (orquestador central)
-- [ ] Workflow principal: `WhatsApp entrante → n8n → chequea handoff en la base
-      → (IA responde por WhatsApp) o (solo se registra el mensaje) → si cierra
+- [ ] Workflow principal: `Telegram entrante → n8n → chequea handoff en la base
+      → (IA responde por Telegram) o (solo se registra el mensaje) → si cierra
       el interrogatorio, genera Pre-OT → notifica al técnico`.
 - [ ] Notificación al técnico configurable (mensaje interno, email o push —
       definir cuál se demuestra en el MVP).
 - [ ] Modularizar el workflow en nodos separados (recepción, decisión de
-      handoff, llamada a GPT, envío de WhatsApp, generación de Pre-OT) para que
-      un fallo en un tramo no tumbe todo el flujo — mitigación de riesgo de
+      handoff, llamada a Gemini, envío de Telegram, generación de Pre-OT) para
+      que un fallo en un tramo no tumbe todo el flujo — mitigación de riesgo de
       integración señalada en el anteproyecto.
 
 ### 9. Pulido de UI/UX
@@ -248,14 +272,14 @@ siguen corriendo) antes de relanzar.
 - [ ] Accesibilidad básica (labels, contraste, foco de teclado) en formularios.
 
 ### 10. Pruebas y ajustes
-- [ ] Probar el ejemplo del anteproyecto end-to-end mandando un WhatsApp real:
+- [ ] Probar el ejemplo del anteproyecto end-to-end mandando un Telegram real:
       "el auto no arranca" → Gol Trend 2018 → hace clic → Pre-OT con batería
       descargada / multímetro / 15 min, y aviso recibido por el técnico.
 - [ ] Probar el handoff en ambos sentidos: técnico toma la conversación a mitad
       del interrogatorio y la IA deja de responder; la libera y la IA retoma.
 - [ ] Validar que el árbol dinámico no haga preguntas de más (riesgo mencionado
       en el anteproyecto).
-- [ ] Probar caso de falla (GPT o WhatsApp caído) y confirmar que el cliente
+- [ ] Probar caso de falla (Gemini o Telegram caído) y confirmar que el cliente
       igual recibe alguna respuesta, no silencio.
 - [ ] Revisar que los diagnósticos generados se presenten siempre como
       *prediagnóstico*, nunca como diagnóstico definitivo.
@@ -264,7 +288,7 @@ siguen corriendo) antes de relanzar.
 - [ ] Provisionar PostgreSQL de producción (Supabase/Neon/Railway).
 - [ ] Configurar variables de entorno en Vercel y desplegar `ui/`.
 - [ ] Verificar que las migraciones de Prisma corran en el pipeline de deploy.
-- [ ] Confirmar que el número de WhatsApp (test o producción) y el workflow de
+- [ ] Confirmar que el bot de Telegram (test o producción) y el workflow de
       n8n apunten al entorno correcto (no mezclar staging con producción).
 
 ### Fuera de alcance del MVP (según anteproyecto)

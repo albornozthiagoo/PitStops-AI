@@ -27,8 +27,8 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/conversaciones — abre un chat manualmente (uso del técnico
-// desde el dashboard). El flujo normal es que el webhook de WhatsApp
-// (app/api/webhooks/whatsapp) cree la conversación solo, así que acá
+// desde el dashboard). El flujo normal es que el webhook de Telegram
+// (app/api/webhooks/telegram) cree la conversación solo, así que acá
 // solo `clienteId` es obligatorio: `vehiculoId`/`tecnicoId` se asignan
 // después, cuando se identifica el vehículo o un técnico toma el caso.
 export async function POST(req: NextRequest) {
