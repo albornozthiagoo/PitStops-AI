@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button, Panel } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { formatFechaHora } from "@/lib/date";
 
 // Nota: usamos literales de string ("IA" | "TECNICO", etc.) en vez de
 // importar los enums desde @/generated/prisma/client acá. Este es un
@@ -73,7 +74,7 @@ export function ConversacionThread({ conversacionId, controladoPorInicial, mensa
           id: data.id,
           autor: "TECNICO",
           texto: data.texto,
-          fecha: new Date(data.createdAt).toLocaleString("es-AR"),
+          fecha: formatFechaHora(new Date(data.createdAt)),
         },
       ]);
       setControladoPor("TECNICO");

@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -H localhost",
+    "dev:quiet": "node scripts/dev-quiet.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

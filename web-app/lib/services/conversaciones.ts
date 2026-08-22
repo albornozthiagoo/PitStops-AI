@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { formatFechaHora } from "@/lib/date";
 
 // Shape plano (sin Date ni tipos del cliente de Prisma) para poder pasarlo
 // sin problemas de Server Component a Client Component — ver la nota en
@@ -56,7 +57,7 @@ export async function getConversaciones(): Promise<ConversacionListItem[]> {
     clienteTelefono: c.cliente.telefono,
     vehiculoPatente: c.vehiculo?.patente ?? null,
     ultimoMensaje: c.mensajes[0]?.texto ?? null,
-    actualizado: c.updatedAt.toLocaleString("es-AR"),
+    actualizado: formatFechaHora(c.updatedAt),
   }));
 }
 
@@ -86,7 +87,7 @@ export async function getConversacion(id: string): Promise<ConversacionDetalle |
       id: m.id,
       autor: m.autor,
       texto: m.texto,
-      fecha: m.createdAt.toLocaleString("es-AR"),
+      fecha: formatFechaHora(m.createdAt),
     })),
   };
 }

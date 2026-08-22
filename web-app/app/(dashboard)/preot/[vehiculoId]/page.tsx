@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getPreOtPorVehiculo } from "@/lib/services/preot";
 import { PreOtDocument } from "@/components/preot/PreOtDocument";
+import { formatFechaHora } from "@/lib/date";
 
 // Depende de la base en cada visita — nunca prerenderizar en build time.
 export const dynamic = "force-dynamic";
@@ -58,7 +59,7 @@ export default async function PreOtPorVehiculoPage({ params }: Props) {
       <PreOtDocument
         id={preOt.id}
         codigo={preOt.codigo}
-        generada={preOt.generada.toLocaleString("es-AR")}
+        generada={formatFechaHora(preOt.generada)}
         aprobadaInicial={preOt.aprobada}
         prioridadInicial={preOt.prioridad}
         sintomaPrincipalInicial={preOt.sintomaPrincipal}
