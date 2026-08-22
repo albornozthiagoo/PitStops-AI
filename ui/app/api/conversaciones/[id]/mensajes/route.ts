@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiError, badRequest } from "@/lib/api-helpers";
 import { AutorMensaje, ControladoPor } from "@/generated/prisma/client";
-import { enviarMensajeWhatsapp } from "@/lib/whatsapp";
+import { enviarMensajeTelegram } from "@/lib/telegram";
 
 interface Params {
   // Next.js 15+ pasa `params` como Promise en los Route Handlers — hay que
@@ -13,7 +13,7 @@ interface Params {
 
 // POST /api/conversaciones/:id/mensajes
 // body: { texto: string }
-// Guarda el mensaje escrito por el técnico, lo manda por WhatsApp al
+// Guarda el mensaje escrito por el técnico, lo manda por Telegram al
 // cliente, y si la conversación todavía estaba en manos de la IA se la
 // pasa a control manual (si un técnico le está escribiendo directamente al
 // cliente, no queremos que la IA también le responda al próximo mensaje
@@ -55,16 +55,16 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     if (conversacion.cliente.telefono) {
       try {
-        await enviarMensajeWhatsapp(conversacion.cliente.telefono, textoLimpio);
+        await enviarMensajeTelegram(conversacion.cliente.telefono, textoLimpio);
       } catch (envioError) {
         // El mensaje ya quedó guardado en el sistema — avisamos del fallo
         // de envío pero no lo tratamos como error fatal del endpoint.
         console.error(
-          `[api] POST /api/conversaciones/${id}/mensajes: error enviando WhatsApp`,
+          `[api] POST /api/conversaciones/${id}/mensajes: error enviando Telegram`,
           envioError
         );
         return NextResponse.json(
-          { ...mensaje, avisoEnvio: "El mensaje se guardó pero no se pudo enviar por WhatsApp." },
+          { ...mensaje, avisoEnvio: "El mensaje se guardó pero no se pudo enviar por Telegram." },
           { status: 201 }
         );
       }

@@ -18,7 +18,7 @@ export default async function ConversacionesPage() {
     <div className="h-full overflow-auto p-7">
       <div className="font-mono text-[11px] tracking-[.14em] uppercase text-action-orange mb-1.5 flex items-center gap-2">
         <span className="w-3.5 h-px bg-action-orange" />
-        WhatsApp · prediagnóstico
+        Telegram · prediagnóstico
       </div>
       <h2 className="text-2xl mb-[18px]">Conversaciones</h2>
 

@@ -37,7 +37,7 @@ async function resolverVehiculo(
     throw new Error("No hay ningún Taller cargado en la base — hace falta al menos uno para asociar el vehículo");
   }
 
-  // El cliente no siempre sabe/da la patente o el VIN por WhatsApp — se
+  // El cliente no siempre sabe/da la patente o el VIN por chat — se
   // generan placeholders únicos para no romper los @unique del schema,
   // hasta que un técnico complete el dato real.
   const sufijo = `${conversacion.id.slice(-6)}-${Date.now()}`;
@@ -64,7 +64,7 @@ async function resolverVehiculo(
 // Corre un turno del motor de diagnóstico para una conversación: lee su
 // historial completo, le pregunta al LLM qué sigue, y persiste el
 // resultado (una pregunta nueva, o el cierre con el PreOT armado). Siempre
-// devuelve el texto que hay que mandarle al cliente por WhatsApp.
+// devuelve el texto que hay que mandarle al cliente por el canal activo.
 export async function correrTurnoDiagnostico(conversacionId: string): Promise<string> {
   const conversacion = await prisma.conversacion.findUniqueOrThrow({
     where: { id: conversacionId },

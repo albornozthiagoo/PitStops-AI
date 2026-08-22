@@ -40,7 +40,7 @@ enum RolTecnico {
   ADMIN
 }
 
-// Quién puede responder en una conversación de WhatsApp en un momento dado:
+// Quién puede responder en una conversación en un momento dado:
 // la IA (motor de diagnóstico) o un técnico que la tomó a mano.
 enum ControladoPor {
   IA
@@ -85,7 +85,7 @@ model Tecnico {
 model Cliente {
   id        String   @id @default(cuid())
   nombre    String
-  telefono  String?  @unique // clave de match con el número de WhatsApp entrante
+  telefono  String?  @unique // clave de match con el chat entrante (chat.id de Telegram)
   email     String?
   createdAt DateTime @default(now())
 
@@ -122,11 +122,11 @@ model Vehiculo {
   @@map("vehiculos")
 }
 
-// ---------------- Chat de prediagnóstico (vía WhatsApp) ----------------
-// El chat ya no se escribe desde la UI: el cliente le habla al WhatsApp
-// del taller (webhook en app/api/webhooks/whatsapp), y esos mensajes se
-// persisten acá. `cliente` es el ancla obligatoria (es lo único que el
-// webhook conoce apenas llega el primer mensaje); `vehiculo`/`tecnico`
+// ---------------- Chat de prediagnóstico (vía Telegram) ----------------
+// El chat ya no se escribe desde la UI: el cliente le habla al bot de
+// Telegram del taller (webhook en app/api/webhooks/telegram), y esos
+// mensajes se persisten acá. `cliente` es el ancla obligatoria (es lo único
+// que el webhook conoce apenas llega el primer mensaje); `vehiculo`/`tecnico`
 // quedan opcionales hasta que se identifican/asignan.
 
 model Conversacion {
@@ -164,7 +164,7 @@ model Mensaje {
   texto       String       @db.Text
   tag         String? // ej. "PitStop AI · analizando patrón"
   scanPct     Int? // progreso del escaneo mostrado en el bubble, 0-100
-  waMessageId String?      @unique // wamid del mensaje en WhatsApp — evita duplicar si Meta reintenta el webhook
+  waMessageId String?      @unique // id externo del mensaje en el canal (ej. "tg:<update_id>") — evita duplicar si el proveedor reintenta el webhook
   createdAt   DateTime     @default(now())
 
   conversacion   Conversacion @relation(fields: [conversacionId], references: [id], onDelete: Cascade)

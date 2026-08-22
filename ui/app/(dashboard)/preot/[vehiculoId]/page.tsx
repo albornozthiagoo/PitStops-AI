@@ -38,7 +38,7 @@ export default async function PreOtPorVehiculoPage({ params }: Props) {
         </p>
         <p className="text-text-lo text-sm">
           Se genera automáticamente cuando el motor de diagnóstico (IA) termina de conversar con el cliente por
-          WhatsApp.
+          Telegram.
         </p>
         <Link href="/dashboard" className="text-action-orange text-sm mt-2 hover:underline">
           Volver al dashboard
