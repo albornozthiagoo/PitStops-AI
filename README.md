@@ -48,21 +48,21 @@ media · posible causa: batería descargada · ~15 min · herramienta: multímet
 
 ```
 docs/   Anteproyecto y documentación del proyecto
-ui/     App Next.js — frontend, API routes y schema de Prisma
+web-app/     App Next.js — frontend, API routes y schema de Prisma
 ```
 
-La app vive en [`ui/`](ui/) — es el **backoffice del taller**: monitorea las
+La app vive en [`web-app/`](web-app/) — es el **backoffice del taller**: monitorea las
 conversaciones de WhatsApp en vivo, permite tomar/soltar el control de una
 conversación, y muestra Pre-OTs, cola de vehículos e historial. No es donde se
 escribe el mensaje del cliente. Para levantarla en local:
 
 ```bash
-cd ui
+cd web-app
 npm install
 npm run dev
 ```
 
-Abrí http://localhost:3000. Ver [`ui/README.md`](ui/README.md) para el detalle
+Abrí http://localhost:3000. Ver [`web-app/README.md`](web-app/README.md) para el detalle
 de estructura de carpetas, setup de base de datos y endpoints disponibles.
 
 ## Estado y roadmap

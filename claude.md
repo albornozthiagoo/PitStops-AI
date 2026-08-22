@@ -88,14 +88,14 @@ Free tier: 15 RPM / 1500 mensajes por día, de sobra para el MVP.
    panel ("tomar conversación"); a partir de ahí la IA queda en pausa para ese
    chat hasta que el técnico la libere o se cierre el caso.
 
-El panel Next.js (`ui/`) **no es donde se escribe el mensaje del cliente** — es
+El panel Next.js (`web-app/`) **no es donde se escribe el mensaje del cliente** — es
 el backoffice del taller: monitorea conversaciones en vivo, permite tomar/soltar
 el control de una conversación, y muestra Pre-OTs, cola de vehículos e historial.
 
-## Estado actual del repo (`ui/`)
+## Estado actual del repo (`web-app/`)
 
 Ya existe un scaffold de Next.js 14 + Prisma con:
-- Schema de datos completo (`ui/prisma/schema.prisma`): Taller, Tecnico, Cliente,
+- Schema de datos completo (`web-app/prisma/schema.prisma`): Taller, Tecnico, Cliente,
   Vehiculo, Conversacion, Mensaje, PreOT, Hipotesis, HerramientaSugerida, OrdenTrabajo.
 - Páginas: dashboard, chat, preot, historial, vehiculos, login (UI construida, sin
   lógica real conectada todavía).
@@ -161,10 +161,10 @@ son las piezas donde más probable es pisarse.
 ### 1. Fundamentos
 - [x] Confirmar variables de entorno necesarias (`DATABASE_URL`, `DIRECT_URL`,
       `LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL`, `TELEGRAM_BOT_TOKEN`/
-      `TELEGRAM_WEBHOOK_SECRET`) y documentarlas en `ui/.env.example` —
+      `TELEGRAM_WEBHOOK_SECRET`) y documentarlas en `web-app/.env.example` —
       Supabase como Postgres, LLM apuntando a Gemini por default. Credenciales
       de n8n todavía no aplica (n8n sigue fuera del camino crítico, ver punto
-      3.D). Todas cargadas y probadas en `ui/.env`.
+      3.D). Todas cargadas y probadas en `web-app/.env`.
 - [x] Correr `prisma migrate dev` contra una base Postgres real (local o Supabase)
       y `db:seed` para tener datos de prueba consistentes con `lib/types.ts`.
       Hecho 2026-08-21 contra Supabase: sin migraciones pendientes, `prisma
@@ -194,15 +194,15 @@ son las piezas donde más probable es pisarse.
 - [ ] Desde la app de Telegram, hablarle a **@BotFather** → `/newbot` → elegir
       nombre y username (debe terminar en `bot`, ej. `pitstop_ai_bot`).
       BotFather devuelve el **token** del bot — pegarlo en
-      `TELEGRAM_BOT_TOKEN` en `ui/.env` (nunca en el repo).
+      `TELEGRAM_BOT_TOKEN` en `web-app/.env` (nunca en el repo).
 - [ ] Definir un valor random propio para `TELEGRAM_WEBHOOK_SECRET` (no lo da
       Telegram, lo inventamos nosotros — cualquier string de 1-256 caracteres
-      A-Z/a-z/0-9/_/-) y cargarlo también en `ui/.env`.
+      A-Z/a-z/0-9/_/-) y cargarlo también en `web-app/.env`.
 - [ ] A diferencia de Twilio, no hace falta "unirse" con join code — cualquiera
       que le escriba al bot por su username ya genera un `chat.id` válido.
 
 **B. Webhook**
-- [x] Implementado en `ui/app/api/webhooks/telegram/route.ts` — recibe el
+- [x] Implementado en `web-app/app/api/webhooks/telegram/route.ts` — recibe el
       `Update` de Telegram como JSON (no urlencoded como Twilio). La validación
       de origen usa el header `X-Telegram-Bot-Api-Secret-Token` comparado
       contra `TELEGRAM_WEBHOOK_SECRET` (mecanismo propio de Telegram, no hay
@@ -213,7 +213,7 @@ son las piezas donde más probable es pisarse.
       responde por el bot.
 
 **C. Envío de mensajes**
-- [x] Implementado en `ui/lib/telegram.ts` — `fetch` directo a
+- [x] Implementado en `web-app/lib/telegram.ts` — `fetch` directo a
       `POST https://api.telegram.org/bot<token>/sendMessage` con
       `{chat_id, text}`. No hace falta SDK, la Bot API es REST simple.
 
@@ -329,7 +329,7 @@ son las piezas donde más probable es pisarse.
 
 ### 11. Deploy
 - [ ] Provisionar PostgreSQL de producción (Supabase/Neon/Railway).
-- [ ] Configurar variables de entorno en Vercel y desplegar `ui/`.
+- [ ] Configurar variables de entorno en Vercel y desplegar `web-app/`.
 - [ ] Verificar que las migraciones de Prisma corran en el pipeline de deploy.
 - [ ] Confirmar que el bot de Telegram (test o producción) y el workflow de
       n8n apunten al entorno correcto (no mezclar staging con producción).
