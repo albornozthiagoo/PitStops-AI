@@ -7,7 +7,7 @@
 *.a
 
 # Archivos de Claude
-claude.md
+CLAUDE.md
 
 # Archivos temporales 
 .vscode/

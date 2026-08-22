@@ -1,53 +1,66 @@
 # PitStop AI
 
-Interfaz de prediagnóstico inteligente para talleres mecánicos.
-Migración del prototipo HTML a **Next.js 14 (App Router) + React + TypeScript + Tailwind CSS**.
+Backoffice del taller: panel Next.js que monitorea las conversaciones de
+Telegram en vivo, permite tomar/soltar el control de una conversación, y
+muestra Pre-OTs, cola de vehículos e historial. El chat con el cliente pasa
+por el bot de Telegram (no por esta app).
 
 ## Cómo correrlo
 
 ```bash
 npm install
+npx prisma generate
 npm run dev
 ```
 
 Abrí http://localhost:3000 — te redirige a `/login`. Cualquier usuario/contraseña entra
 (la autenticación todavía es un stub, ver más abajo).
 
+Para que la IA responda mensajes reales de Telegram en local hace falta
+además un túnel público (`ngrok http 3000`) y registrar el webhook con
+`POST https://api.telegram.org/bot<token>/setWebhook` (`url` + `secret_token`).
+
 ## Estructura
 
 ```
 app/
-  login/page.tsx                 Pantalla de login (standalone, sin sidebar)
-  (dashboard)/layout.tsx         Sidebar + Topbar compartidos
-  (dashboard)/dashboard/page.tsx Dashboard del taller
-  (dashboard)/chat/page.tsx      Chat de prediagnóstico
-  (dashboard)/preot/page.tsx     Pre-OT (documento técnico)
-  (dashboard)/historial/page.tsx Historial de vehículos
-  globals.css                    Reset, utilidades de recorte diagonal, textura hex
+  login/page.tsx                       Pantalla de login (standalone, sin sidebar)
+  (dashboard)/layout.tsx               Sidebar + Topbar compartidos
+  (dashboard)/dashboard/page.tsx       Dashboard del taller
+  (dashboard)/conversaciones/          Lista + detalle de conversaciones (real, Prisma)
+  (dashboard)/conversaciones/[id]/     Visor de una conversación + control de handoff (ConversacionThread)
+  (dashboard)/preot/                   Pre-OT (lista + documento por vehículo)
+  (dashboard)/historial/page.tsx       Historial de órdenes de trabajo
+  api/webhooks/telegram/route.ts       Webhook de Telegram — entrada real del cliente
+  api/conversaciones/[id]/control/     Handoff: tomar/liberar conversación
+  api/conversaciones/[id]/mensajes/    Mensaje manual del técnico → se manda por Telegram
+  globals.css                          Reset, utilidades de recorte diagonal, textura hex
 
 components/
-  ui/            Panel, Button, Badge, Led, ScanLine/ScanBar/ProbBar, HexLogo, Input
-  layout/        Sidebar, Topbar
-  dashboard/     KpiCard, QueueRow
-  chat/          ChatBubble, ThinkingIndicator
-  preot/         HypothesisRow
+  ui/              Panel, Button, Badge, Led, ScanLine/ScanBar/ProbBar, HexLogo, Input
+  layout/          Sidebar, Topbar
+  dashboard/       KpiCard, QueueRow
+  conversaciones/  ConversacionThread — indicador IA/técnico, botón tomar/liberar, input de respuesta manual
+  preot/           HypothesisRow, PreOtDocument
+  historial/       HistorialTable
 
 lib/
-  types.ts       Tipos compartidos (Vehiculo, Conversacion, PreOT, etc.)
-  mock-data.ts   Datos de ejemplo — reemplazar por llamadas a la API
-  cn.ts          Helper mínimo de clases condicionales
-  prisma.ts      Singleton de PrismaClient (evita agotar conexiones en dev)
+  prisma.ts        Singleton de PrismaClient (evita agotar conexiones en dev)
+  telegram.ts      enviarMensajeTelegram — Bot API vía fetch, sin SDK
+  api-helpers.ts   Helpers de respuesta/error para las API routes
+  date.ts          Formateo de fechas/horas (24hs) compartido por server y client components
   services/
-    vehiculos.ts Consulta la base directo con Prisma — sin fetch a un backend aparte
+    llm.ts             Cliente LLM genérico compatible con OpenAI (default Gemini)
+    diagnostico.ts     Motor de diagnóstico: corre un turno, genera la Pre-OT al cerrar
+    dashboard.ts       Queries de KPIs del dashboard
+    historial.ts       Queries del historial de OTs
+    conversaciones.ts  Queries de conversaciones/mensajes
+    preot.ts           Queries de Pre-OT
+    vehiculos.ts       Queries de vehículos
 
 prisma/
-  schema.prisma  Modelo de datos real (Postgres) — mapea 1:1 con lib/types.ts
-  seed.ts        Carga los mismos datos de mock-data.ts en la base
-
-app/vehiculos/
-  page.tsx       Ejemplo de Server Component leyendo de Prisma vía el service
-  error.tsx      Error boundary de esa ruta, con el mismo lenguaje visual
-  loading.tsx    Estado de carga mientras se abre la conexión a la base
+  schema.prisma    Modelo de datos real (Postgres)
+  seed.ts          Datos de ejemplo (taller, técnico, clientes, vehículos, conversaciones)
 ```
 
 Todo el sistema de diseño (colores, tipografías, sombras, animaciones) vive en
@@ -57,21 +70,19 @@ Todo el sistema de diseño (colores, tipografías, sombras, animaciones) vive en
 
 > **Prisma 7**: este proyecto usa Prisma ORM 7, que sacó el motor en Rust y
 > ahora corre 100% sobre el driver `pg` (node-postgres) vía un *driver
-> adapter* (`@prisma/adapter-pg`). Si venías de una versión anterior del
-> proyecto (Prisma 5/6), este es un cambio grande: `package.json` ahora es
-> `"type": "module"`, la config de conexión vive en `prisma.config.ts` (no
-> en `schema.prisma`), y el cliente se genera en `generated/prisma/` en vez
-> de `node_modules`. Ver [la guía oficial de migración](https://www.prisma.io/docs/orm/v6/more/upgrades/to-v7)
-> si tenés dudas de algún detalle puntual.
+> adapter* (`@prisma/adapter-pg`). `package.json` es `"type": "module"`, la
+> config de conexión vive en `prisma.config.ts` (no en `schema.prisma`), y el
+> cliente se genera en `generated/prisma/` en vez de `node_modules`.
 
 **Requisito**: Node ≥ 20.19 (recomendado 22.x). Verificá con `node -v` antes de instalar.
 
 1. Conseguí una base Postgres (Supabase o Neon, gratis). En el dashboard de
    Supabase: botón **"Connect"** → pestaña **"ORMs"** → **Prisma** — te arma
    las dos líneas de conexión listas para copiar.
-2. `cp .env.example .env` y completá `DATABASE_URL` y `DIRECT_URL` con
-   los dos connection strings (ver comentarios en `.env.example` sobre
-   cuál puerto usa cada uno y por qué).
+2. `cp .env.example .env` y completá `DATABASE_URL`/`DIRECT_URL` (Postgres),
+   `LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL` (motor de IA, default Gemini) y
+   `TELEGRAM_BOT_TOKEN`/`TELEGRAM_WEBHOOK_SECRET` (canal) — ver comentarios en
+   `.env.example` para cómo conseguir cada uno.
 3. Instalá dependencias y generá el cliente:
    ```bash
    npm install
@@ -81,8 +92,7 @@ Todo el sistema de diseño (colores, tipografías, sombras, animaciones) vive en
    ```bash
    npm run db:migrate
    ```
-5. Cargá los datos de ejemplo — **ya no es automático** con `migrate dev`
-   como en versiones anteriores de Prisma, hay que correrlo aparte:
+5. Cargá los datos de ejemplo:
    ```bash
    npm run db:seed
    ```
@@ -91,45 +101,21 @@ Todo el sistema de diseño (colores, tipografías, sombras, animaciones) vive en
    npm run db:studio
    ```
 
-### Si venís de una versión anterior de este proyecto (Prisma 5/6)
-
-Los cambios están todos interconectados (config, imports, tipo de módulo),
-así que lo más seguro es reemplazar el proyecto entero por esta versión en
-vez de aplicar los cambios a mano archivo por archivo. Los puntos clave si
-igual querés compararlo con tu copia local:
-
-- `package.json` tiene `"type": "module"` — por eso `next.config.js` y
-  `postcss.config.js` pasaron a `.mjs`.
-- Cualquier import de `"@prisma/client"` ahora es `"@/generated/prisma/client"`
-  (o `"../generated/prisma/client"` desde `prisma/seed.ts`, que está fuera
-  del alias `@/*`).
-- `schema.prisma` ya no tiene `url`/`directUrl` en el `datasource` — esa
-  configuración se movió a `prisma.config.ts`.
-- Cualquier lugar que instancie `new PrismaClient()` (como `lib/prisma.ts`
-  y `prisma/seed.ts`) ahora necesita pasarle un `adapter` de
-  `@prisma/adapter-pg`.
-
-
-
-
 ## Próximos pasos para que sea funcional de verdad
 
 1. **Autenticación real**: reemplazar el `router.push("/dashboard")` de
-   `app/login/page.tsx` por NextAuth.js, Clerk o el proveedor que usen —
-   ya hay `passwordHash` en el modelo `Tecnico` esperando un hash real (bcrypt/argon2).
-2. ~~Base de datos~~ ✅ ya está en `prisma/schema.prisma`, ver sección de arriba.
-3. ~~API routes~~ ✅ ver tabla de endpoints más abajo.
-4. **Conectar el frontend a estos endpoints**: hoy `app/(dashboard)/*` todavía lee
-   de `lib/mock-data.ts`. Reemplazar esos imports por `fetch()` a los endpoints
-   de abajo (o Server Components que llamen a `lib/services/*` directo, como
-   ya hace `app/vehiculos/page.tsx`).
-5. **Motor de diagnóstico**: conectar el envío de mensajes en `app/(dashboard)/chat/page.tsx`
-   a una API route que llame a un LLM, devuelva JSON estructurado
-   (`{ hipotesis: [{nombre, probabilidad}], herramientas: [...], tiempoEstimado }`),
-   y con eso llame a `POST /api/preot` para persistirlo.
-6. **Accesibilidad**: agregar `aria-live="polite"` en el log de chat cuando lleguen
-   mensajes nuevos del sistema (el `ThinkingIndicator` ya tiene `role="status"`).
-7. **Deploy**: Vercel es la opción más directa para Next.js.
+   `app/login/page.tsx` por NextAuth.js, Clerk o el proveedor que usen — ya
+   hay `passwordHash` en el modelo `Tecnico` esperando un hash real (bcrypt/argon2).
+2. **Auto-refresh del visor de conversación**: `ConversacionThread.tsx` ya
+   tiene el botón de handoff y el input de respuesta manual, pero no se
+   actualiza solo cuando llega un mensaje nuevo del cliente — hay que
+   recargar la página. Falta poll o websocket sobre
+   `app/api/conversaciones/[id]/mensajes`.
+3. **Árbol de preguntas por tipo de avería**: hoy `lib/services/llm.ts` usa un
+   único system prompt genérico, no una lógica distinta por tipo de falla.
+4. **n8n**: automatizar notificación al técnico cuando se genera una Pre-OT
+   (hoy solo se revalida el dashboard, sin push/aviso activo).
+5. **Deploy**: Vercel es la opción más directa para Next.js.
 
 ## API routes disponibles
 
@@ -141,13 +127,14 @@ igual querés compararlo con tu copia local:
 | `PATCH` | `/api/vehiculos/:id` | Actualiza estado, prioridad, bahía, síntoma o km |
 | `GET` | `/api/conversaciones?vehiculoId=` | Lista conversaciones con sus mensajes |
 | `POST` | `/api/conversaciones` | Abre un chat nuevo con el primer mensaje del técnico |
-| `POST` | `/api/conversaciones/:id/mensajes` | Agrega un mensaje del técnico a una conversación existente |
+| `PATCH` | `/api/conversaciones/:id/control` (`{accion:"tomar"\|"liberar"}`) | Handoff: técnico toma o devuelve la conversación a la IA |
+| `POST` | `/api/conversaciones/:id/mensajes` | Mensaje manual del técnico — se persiste y se manda por Telegram |
 | `GET` | `/api/preot?vehiculoId=` | Lista Pre-OTs |
-| `POST` | `/api/preot` | Genera una Pre-OT (hipótesis + herramientas ya calculadas) |
+| `POST` | `/api/preot` | Genera una Pre-OT manualmente (hipótesis + herramientas ya calculadas) |
 | `GET` | `/api/preot/:id` | Detalle de una Pre-OT |
 | `PATCH` | `/api/preot/:id` (`{accion:"aprobar",...}`) | Aprueba la Pre-OT: crea la `OrdenTrabajo` real y actualiza el vehículo, todo en una transacción |
+| `POST` | `/api/webhooks/telegram` | Entrada real del cliente — Telegram manda acá cada `Update` |
 
 Todos devuelven errores con `{ error: string }` y status HTTP apropiado
 (`400` validación, `404` no encontrado, `409` conflicto/duplicado, `500` error
 interno) — ver `lib/api-helpers.ts`.
-
