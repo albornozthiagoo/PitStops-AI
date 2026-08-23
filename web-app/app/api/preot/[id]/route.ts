@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { apiError, badRequest } from "@/lib/api-helpers";
+import { apiError, badRequest, unauthorized } from "@/lib/api-helpers";
 import { EstadoVehiculo, Prioridad } from "@/generated/prisma/client";
+import { auth } from "@/lib/auth";
 
 interface Params {
   // Next.js 15+ pasa `params` como Promise en los Route Handlers — hay que
@@ -48,11 +49,19 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
+    // El middleware ya bloquea esto sin sesión — se repite acá como defensa
+    // en profundidad, por si algún día cambia el matcher del middleware.
+    const session = await auth();
+    if (!session?.user) return unauthorized();
+
     const body = await req.json();
     const { accion } = body;
 
     if (accion === "aprobar") {
-      return aprobar(id, body);
+      // El técnico que aprueba es el de la sesión, no un id que mande el
+      // cliente en el body — antes de tener auth real, `aprobadaPorId`
+      // quedaba siempre en null porque nadie lo mandaba desde el front.
+      return aprobar(id, body, session.user.id);
     }
     if (accion && accion !== "editar") {
       return badRequest('accion inválida. Usar "aprobar", "editar" o dejarla vacía');
@@ -65,9 +74,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
 async function aprobar(
   id: string,
-  body: { ordenCodigo?: string; descripcion?: string; aprobadaPorId?: string }
+  body: { ordenCodigo?: string; descripcion?: string },
+  aprobadaPorId: string
 ) {
-  const { ordenCodigo, descripcion, aprobadaPorId } = body;
+  const { ordenCodigo, descripcion } = body;
 
   if (!ordenCodigo || !descripcion) {
     return badRequest("Faltan campos requeridos: ordenCodigo, descripcion");
@@ -89,7 +99,7 @@ async function aprobar(
         descripcion,
         vehiculoId: preOt.vehiculoId,
         preOtId: preOt.id,
-        aprobadaPorId: aprobadaPorId ?? null,
+        aprobadaPorId,
       },
     }),
     prisma.vehiculo.update({

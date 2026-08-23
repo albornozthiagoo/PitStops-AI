@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { apiError, badRequest } from "@/lib/api-helpers";
+import { apiError, badRequest, unauthorized } from "@/lib/api-helpers";
 import { ControladoPor } from "@/generated/prisma/client";
+import { auth } from "@/lib/auth";
 
 interface Params {
   // Next.js 15+ pasa `params` como Promise en los Route Handlers — hay que
@@ -19,6 +20,10 @@ interface Params {
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
+    // El middleware ya bloquea esto sin sesión — se repite acá como defensa
+    // en profundidad, por si algún día cambia el matcher del middleware.
+    if (!(await auth())) return unauthorized();
+
     const body = await req.json();
     const { accion } = body;
 

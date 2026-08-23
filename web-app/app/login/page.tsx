@@ -1,15 +1,45 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { Button, FieldLabel, HexLogo, Input, Led, ScanLine } from "@/components/ui";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [legajo, setLegajo] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [cargando, setCargando] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // TODO: reemplazar por autenticación real (NextAuth / Clerk / etc.)
+    setError(null);
+    setCargando(true);
+
+    const resultado = await signIn("credentials", {
+      legajo,
+      password,
+      redirect: false,
+    });
+
+    setCargando(false);
+
+    // Mensaje genérico a propósito para credenciales inválidas: no
+    // distinguimos "el usuario no existe" de "la contraseña está mal" para
+    // no facilitar user enumeration. El rate limit sí se distingue (no es
+    // información sensible) para que el técnico entienda qué está pasando.
+    if (!resultado || resultado.error) {
+      setError(
+        resultado?.code === "demasiados_intentos"
+          ? "Demasiados intentos. Esperá unos minutos y volvé a intentar."
+          : "Usuario o contraseña incorrectos."
+      );
+      return;
+    }
+
     router.push("/dashboard");
+    router.refresh();
   }
 
   return (
@@ -34,13 +64,37 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <FieldLabel htmlFor="f-user">Usuario / legajo</FieldLabel>
-            <Input id="f-user" type="text" placeholder="tecnico.garcia" required />
+            <Input
+              id="f-user"
+              name="legajo"
+              type="text"
+              placeholder="tecnico.garcia"
+              value={legajo}
+              onChange={(e) => setLegajo(e.target.value)}
+              autoComplete="username"
+              required
+            />
           </div>
 
           <div className="mb-2">
             <FieldLabel htmlFor="f-pass">Contraseña</FieldLabel>
-            <Input id="f-pass" type="password" placeholder="••••••••" required />
+            <Input
+              id="f-pass"
+              name="password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+            />
           </div>
+
+          {error && (
+            <p className="text-xs text-red-400 mb-3" role="alert">
+              {error}
+            </p>
+          )}
 
           <div className="flex justify-between items-center my-1.5 mb-5">
             <label className="flex items-center gap-1.5 text-xs text-text-lo">
@@ -51,8 +105,8 @@ export default function LoginPage() {
             </a>
           </div>
 
-          <Button type="submit" variant="primary" className="w-full justify-center">
-            Iniciar sesión
+          <Button type="submit" variant="primary" className="w-full justify-center" disabled={cargando}>
+            {cargando ? "Ingresando…" : "Iniciar sesión"}
           </Button>
         </form>
 

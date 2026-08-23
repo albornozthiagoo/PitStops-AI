@@ -1,5 +1,6 @@
 import { PrismaClient, Prioridad, EstadoVehiculo, AutorMensaje } from "../generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { hashPassword } from "../lib/auth/password";
 
 // prisma db seed corre como script aparte del resto de la app — necesita su
 // propia instancia con adapter, igual que lib/prisma.ts. Usa DIRECT_URL
@@ -18,13 +19,22 @@ async function main() {
     data: { nombre: "Central Motors — Bahía 4", direccion: "Av. 4 de Julio 1234" },
   });
 
+  // La password en texto plano nunca queda hardcodeada en el archivo — sale
+  // de una env var, con un default de desarrollo si no está seteada (con
+  // warning, para que no pase desapercibido en un ambiente real).
+  const seedPassword = process.env.SEED_TECNICO_PASSWORD;
+  if (!seedPassword) {
+    console.warn(
+      "[seed] SEED_TECNICO_PASSWORD no está seteada — usando password de desarrollo por default. " +
+        "No dejar así fuera de un entorno local."
+    );
+  }
   const tecnico = await prisma.tecnico.create({
     data: {
       legajo: "tecnico.garcia",
       nombre: "María García",
       email: "mgarcia@centralmotors.com",
-      // En producción: hashear con bcrypt/argon2 antes de guardar. Nunca texto plano.
-      passwordHash: "REEMPLAZAR_POR_HASH_REAL",
+      passwordHash: await hashPassword(seedPassword ?? "cambiar-esta-password-dev"),
       iniciales: "MG",
       tallerId: taller.id,
     },

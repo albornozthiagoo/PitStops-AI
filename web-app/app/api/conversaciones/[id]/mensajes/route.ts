@@ -1,14 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { apiError, badRequest } from "@/lib/api-helpers";
+import { apiError, badRequest, unauthorized } from "@/lib/api-helpers";
 import { AutorMensaje, ControladoPor } from "@/generated/prisma/client";
 import { enviarMensajeTelegram } from "@/lib/telegram";
+import { auth } from "@/lib/auth";
+import { formatFechaHora } from "@/lib/date";
 
 interface Params {
   // Next.js 15+ pasa `params` como Promise en los Route Handlers — hay que
   // esperarlo antes de leer `.id` (si no, `id` queda `undefined` y Prisma
   // tira "needs at least one of `id` arguments").
   params: Promise<{ id: string }>;
+}
+
+// GET /api/conversaciones/:id/mensajes
+// Usado por el polling de ConversacionThread.tsx para el auto-refresh del
+// visor — devuelve solo lo que ese componente necesita (mensajes +
+// controladoPor), no la conversación completa con cliente/vehículo.
+export async function GET(_req: NextRequest, { params }: Params) {
+  const { id } = await params;
+  try {
+    if (!(await auth())) return unauthorized();
+
+    const conversacion = await prisma.conversacion.findUnique({
+      where: { id },
+      select: {
+        controladoPor: true,
+        mensajes: { orderBy: { createdAt: "asc" } },
+      },
+    });
+    if (!conversacion) {
+      return NextResponse.json({ error: "Conversación no encontrada" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      controladoPor: conversacion.controladoPor,
+      mensajes: conversacion.mensajes.map((m) => ({
+        id: m.id,
+        autor: m.autor,
+        texto: m.texto,
+        fecha: formatFechaHora(m.createdAt),
+      })),
+    });
+  } catch (error) {
+    return apiError(`GET /api/conversaciones/${id}/mensajes`, error);
+  }
 }
 
 // POST /api/conversaciones/:id/mensajes
@@ -21,6 +57,10 @@ interface Params {
 export async function POST(req: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
+    // El middleware ya bloquea esto sin sesión — se repite acá como defensa
+    // en profundidad, por si algún día cambia el matcher del middleware.
+    if (!(await auth())) return unauthorized();
+
     const body = await req.json();
     const { texto } = body;
 

@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Panel } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { formatFechaHora } from "@/lib/date";
+
+// Cada cuánto se refresca el visor mientras la pestaña está visible. 4s es
+// suficientemente "en vivo" para seguir una conversación sin generar carga
+// innecesaria contra la base en un MVP de esta escala.
+const INTERVALO_REFRESCO_MS = 4000;
 
 // Nota: usamos literales de string ("IA" | "TECNICO", etc.) en vez de
 // importar los enums desde @/generated/prisma/client acá. Este es un
@@ -33,6 +38,43 @@ export function ConversacionThread({ conversacionId, controladoPorInicial, mensa
   const [error, setError] = useState<string | null>(null);
 
   const esControlTecnico = controladoPor === "TECNICO";
+
+  // Auto-refresh: mientras la pestaña está visible, cada INTERVALO_REFRESCO_MS
+  // se trae el estado real de la conversación (por si el cliente escribió
+  // algo nuevo por Telegram) sin que el técnico tenga que recargar la
+  // página. Antes de esto el visor quedaba congelado en la carga inicial.
+  const mensajesRef = useRef(mensajes);
+  mensajesRef.current = mensajes;
+
+  useEffect(() => {
+    let cancelado = false;
+
+    async function refrescar() {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const res = await fetch(`/api/conversaciones/${conversacionId}/mensajes`);
+        if (!res.ok || cancelado) return;
+        const data = await res.json();
+
+        const actuales = mensajesRef.current;
+        const cambiaronMensajes =
+          data.mensajes.length !== actuales.length ||
+          data.mensajes[data.mensajes.length - 1]?.id !== actuales[actuales.length - 1]?.id;
+
+        if (cambiaronMensajes) setMensajes(data.mensajes);
+        setControladoPor((prev) => (prev === data.controladoPor ? prev : data.controladoPor));
+      } catch {
+        // Falla silenciosa: un poll perdido no amerita interrumpir al
+        // técnico con un error, el próximo intento lo resuelve solo.
+      }
+    }
+
+    const id = setInterval(refrescar, INTERVALO_REFRESCO_MS);
+    return () => {
+      cancelado = true;
+      clearInterval(id);
+    };
+  }, [conversacionId]);
 
   async function alternarControl() {
     setCambiandoControl(true);
