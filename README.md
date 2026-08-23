@@ -43,15 +43,16 @@ Bot Telegram: [`PitStops AI - BOT`](http://t.me/PitStoppAI_bot)
 
 ## Stack
 
-| Componente           | Tecnología                                                                                     |
-| -------------------- | ---------------------------------------------------------------------------------------------- |
-| Panel del taller     | Next.js 16 (App Router) + React + TypeScript + Tailwind                                        |
-| Canal con el cliente | Telegram Bot API (MVP) — WhatsApp Business en el anteproyecto                                  |
-| IA                   | Cliente genérico compatible con OpenAI, por default Gemini (free tier)                         |
-| Orquestación         | Next.js directo (webhook → motor de IA → Pre-OT) — no se usa n8n                              |
-| Base de datos        | PostgreSQL + Prisma                                                                            |
-| Versionado           | GitHub                                                                                         |
-| Deploy               | Vercel                                                                                         |
+| Componente           | Tecnología                                                             |
+| -------------------- | ---------------------------------------------------------------------- |
+| Panel del taller     | Next.js 16 (App Router) + React + TypeScript + Tailwind                |
+| Canal con el cliente | Telegram Bot API (MVP) — WhatsApp Business en el anteproyecto          |
+| IA                   | Cliente genérico compatible con OpenAI, por default Groq (free tier)   |
+| Autenticación        | NextAuth v5 (Credentials) + Argon2id, sesión JWT                       |
+| Orquestación         | Next.js directo (webhook → motor de IA → Pre-OT) — no se usa n8n       |
+| Base de datos        | PostgreSQL + Prisma                                                    |
+| Versionado           | GitHub                                                                 |
+| Deploy               | Vercel                                                                 |
 
 ## Estructura del repo
 
@@ -76,12 +77,13 @@ de estructura de carpetas, setup de base de datos y endpoints disponibles.
 
 ## Estado y roadmap
 
-El canal (Telegram), el motor de IA (con generación automática de Pre-OT) y el
-handoff técnico↔IA (backend + UI: tomar/liberar conversación, responder
-manual) ya funcionan de punta a punta. Falta autenticación real, que el visor
-de conversaciones se actualice solo cuando llega un mensaje nuevo (hoy hay que
-recargar la página), y el árbol de preguntas por tipo de avería. n8n no se va
-a usar — Next.js hace todo el flujo directo.
+El canal (Telegram), el motor de IA (con árbol de preguntas por tipo de
+avería y generación automática de Pre-OT), el handoff técnico↔IA (backend +
+UI: tomar/liberar conversación, responder manual, visor con auto-refresh) y
+la autenticación real (login contra la base, rutas protegidas) ya funcionan
+de punta a punta. n8n no se va a usar — Next.js hace todo el flujo directo.
+Falta la notificación activa al técnico cuando se genera una Pre-OT (hoy solo
+se refresca el dashboard) y pulido general de UI/UX.
 
 <!-- El historial completo de decisiones/pivots vive en CLAUDE.md, que es
      contexto de desarrollo interno y no forma parte del repo publicado. -->
@@ -95,9 +97,9 @@ a usar — Next.js hace todo el flujo directo.
 | Clasificación de urgencia                                           | Sí                                   |
 | Handoff técnico ↔ IA (tomar/liberar conversación, responder manual) | Sí                                   |
 | Dashboard / historial / Pre-OT con datos reales                     | Sí                                   |
-| Visor de conversación en vivo (auto-refresh)                        | No (hay que recargar la página)      |
-| Árbol dinámico de preguntas por tipo de avería                      | No (prompt único genérico por ahora) |
-| Autenticación real                                                  | No (login es un stub)                |
+| Visor de conversación en vivo (auto-refresh)                        | Sí                                   |
+| Árbol dinámico de preguntas por tipo de avería                      | Sí                                   |
+| Autenticación real (NextAuth + Argon2id, rutas protegidas)          | Sí                                   |
 | Notificación automática al técnico al generar la Pre-OT             | No (sin n8n; se resolvería sin él)   |
 | Reconocimiento de fotos                                             | No (evolución futura)                |
 | Análisis de audio del motor                                         | No (evolución futura)                |

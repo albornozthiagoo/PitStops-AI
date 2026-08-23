@@ -31,3 +31,7 @@ export function apiError(context: string, error: unknown): NextResponse {
 export function badRequest(message: string): NextResponse {
   return NextResponse.json({ error: message }, { status: 400 });
 }
+
+export function unauthorized(): NextResponse {
+  return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+}

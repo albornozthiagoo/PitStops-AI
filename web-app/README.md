@@ -13,8 +13,12 @@ npx prisma generate
 npm run dev
 ```
 
-Abrí http://localhost:3000 — te redirige a `/login`. Cualquier usuario/contraseña entra
-(la autenticación todavía es un stub, ver más abajo).
+Abrí http://localhost:3000 — te redirige a `/login`. El login es real
+(NextAuth v5 + Argon2id contra el modelo `Tecnico`): con la base recién
+seedeada, entrá con legajo `tecnico.garcia` y la password de
+`SEED_TECNICO_PASSWORD` (ver `.env.example`). Todas las rutas del panel y las
+API que mutan datos requieren sesión — solo `/login` y el webhook de Telegram
+quedan afuera.
 
 Para que la IA responda mensajes reales de Telegram en local hace falta
 además un túnel público (`ngrok http 3000`) y registrar el webhook con
@@ -24,33 +28,42 @@ además un túnel público (`ngrok http 3000`) y registrar el webhook con
 
 ```
 app/
-  login/page.tsx                       Pantalla de login (standalone, sin sidebar)
-  (dashboard)/layout.tsx               Sidebar + Topbar compartidos
+  login/page.tsx                       Pantalla de login — signIn("credentials", ...) contra NextAuth
+  api/auth/[...nextauth]/route.ts      Handlers de NextAuth (GET/POST)
+  (dashboard)/layout.tsx               Server Component: valida sesión, Sidebar + Topbar con datos reales
   (dashboard)/dashboard/page.tsx       Dashboard del taller
   (dashboard)/conversaciones/          Lista + detalle de conversaciones (real, Prisma)
   (dashboard)/conversaciones/[id]/     Visor de una conversación + control de handoff (ConversacionThread)
   (dashboard)/preot/                   Pre-OT (lista + documento por vehículo)
   (dashboard)/historial/page.tsx       Historial de órdenes de trabajo
-  api/webhooks/telegram/route.ts       Webhook de Telegram — entrada real del cliente
+  api/webhooks/telegram/route.ts       Webhook de Telegram — entrada real del cliente (no requiere sesión)
   api/conversaciones/[id]/control/     Handoff: tomar/liberar conversación
-  api/conversaciones/[id]/mensajes/    Mensaje manual del técnico → se manda por Telegram
+  api/conversaciones/[id]/mensajes/    GET (poll del visor) + POST (mensaje manual del técnico → Telegram)
   globals.css                          Reset, utilidades de recorte diagonal, textura hex
+
+proxy.ts   Auth middleware (Next.js 16 renombró "middleware" a "proxy") — bloquea todo
+           lo que no esté en el allow-list (/login, /api/auth, /api/webhooks) sin sesión
 
 components/
   ui/              Panel, Button, Badge, Led, ScanLine/ScanBar/ProbBar, HexLogo, Input
-  layout/          Sidebar, Topbar
+  layout/          Sidebar (logout real), Topbar (nombre/iniciales/rol/taller reales, vía props)
   dashboard/       KpiCard, QueueRow
-  conversaciones/  ConversacionThread — indicador IA/técnico, botón tomar/liberar, input de respuesta manual
+  conversaciones/  ConversacionThread — indicador IA/técnico, handoff, input manual, auto-refresh (poll 4s)
   preot/           HypothesisRow, PreOtDocument
   historial/       HistorialTable
 
 lib/
+  auth.ts          NextAuth (Credentials provider, callbacks jwt/session) — runtime Node
+  auth.config.ts   Config edge-safe compartida con proxy.ts (sin Prisma/argon2)
+  auth/
+    password.ts      hashPassword/verifyPassword (Argon2id vía @node-rs/argon2)
+    rate-limit.ts     Rate limit en memoria por legajo para intentos de login
   prisma.ts        Singleton de PrismaClient (evita agotar conexiones en dev)
   telegram.ts      enviarMensajeTelegram — Bot API vía fetch, sin SDK
-  api-helpers.ts   Helpers de respuesta/error para las API routes
+  api-helpers.ts   Helpers de respuesta/error para las API routes (incluye unauthorized())
   date.ts          Formateo de fechas/horas (24hs) compartido por server y client components
   services/
-    llm.ts             Cliente LLM genérico compatible con OpenAI (default Gemini)
+    llm.ts             Cliente LLM genérico compatible con OpenAI (default Groq)
     diagnostico.ts     Motor de diagnóstico: corre un turno, genera la Pre-OT al cerrar
     dashboard.ts       Queries de KPIs del dashboard
     historial.ts       Queries del historial de OTs
@@ -58,9 +71,13 @@ lib/
     preot.ts           Queries de Pre-OT
     vehiculos.ts       Queries de vehículos
 
+types/
+  next-auth.d.ts   Module augmentation de Session/User/JWT con los campos de Tecnico
+
 prisma/
   schema.prisma    Modelo de datos real (Postgres)
-  seed.ts          Datos de ejemplo (taller, técnico, clientes, vehículos, conversaciones)
+  seed.ts          Datos de ejemplo (taller, técnico, clientes, vehículos, conversaciones) —
+                   el técnico se crea con un hash Argon2id real, no un placeholder
 ```
 
 Todo el sistema de diseño (colores, tipografías, sombras, animaciones) vive en
@@ -80,9 +97,12 @@ Todo el sistema de diseño (colores, tipografías, sombras, animaciones) vive en
    Supabase: botón **"Connect"** → pestaña **"ORMs"** → **Prisma** — te arma
    las dos líneas de conexión listas para copiar.
 2. `cp .env.example .env` y completá `DATABASE_URL`/`DIRECT_URL` (Postgres),
-   `LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL` (motor de IA, default Gemini) y
-   `TELEGRAM_BOT_TOKEN`/`TELEGRAM_WEBHOOK_SECRET` (canal) — ver comentarios en
-   `.env.example` para cómo conseguir cada uno.
+   `LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL` (motor de IA, default Groq),
+   `TELEGRAM_BOT_TOKEN`/`TELEGRAM_WEBHOOK_SECRET` (canal), `AUTH_SECRET`
+   (firma la sesión — generála con
+   `node -e "console.log(require('crypto').randomBytes(33).toString('base64'))"`)
+   y `SEED_TECNICO_PASSWORD` (password del técnico de prueba que carga el
+   seed) — ver comentarios en `.env.example` para cómo conseguir cada uno.
 3. Instalá dependencias y generá el cliente:
    ```bash
    npm install
@@ -103,24 +123,13 @@ Todo el sistema de diseño (colores, tipografías, sombras, animaciones) vive en
 
 ## Próximos pasos para que sea funcional de verdad
 
-1. **Autenticación real**: reemplazar el `router.push("/dashboard")` de
-   `app/login/page.tsx` por NextAuth.js, Clerk o el proveedor que usen — ya
-   hay `passwordHash` en el modelo `Tecnico` esperando un hash real (bcrypt/argon2).
-2. **Auto-refresh del visor de conversación**: `ConversacionThread.tsx` ya
-   tiene el botón de handoff y el input de respuesta manual, pero no se
-   actualiza solo cuando llega un mensaje nuevo del cliente — hay que
-   recargar la página. Falta poll o websocket sobre
-   `app/api/conversaciones/[id]/mensajes`.
-3. **Árbol de preguntas por tipo de avería + datos obligatorios**: hoy
-   `lib/services/llm.ts` usa un único system prompt genérico, no una lógica
-   distinta por tipo de falla, y `patente`/`kilometraje` son opcionales (y no
-   se pide el nombre del cliente) cuando deberían ser obligatorios para la
-   Pre-OT.
-4. **Comandos del bot de Telegram**: iniciar conversación nueva y borrar una
-   conversación existente — ver `CLAUDE.md` (raíz, no está en el repo).
-5. **Notificación al técnico** cuando se genera una Pre-OT (hoy solo se
+1. **Borrar una conversación desde Telegram**: hay comandos/botones para
+   iniciar una conversación nueva, pero todavía no uno para borrar una
+   existente (cuando el auto ya se reparó) — ver `CLAUDE.md` (raíz, no está
+   en el repo).
+2. **Notificación al técnico** cuando se genera una Pre-OT (hoy solo se
    revalida el dashboard, sin push/aviso activo) — sin n8n, no se va a usar.
-6. **Deploy**: Vercel es la opción más directa para Next.js.
+3. **Deploy**: Vercel es la opción más directa para Next.js.
 
 ## API routes disponibles
 
@@ -133,6 +142,7 @@ Todo el sistema de diseño (colores, tipografías, sombras, animaciones) vive en
 | `GET` | `/api/conversaciones?vehiculoId=` | Lista conversaciones con sus mensajes |
 | `POST` | `/api/conversaciones` | Abre un chat nuevo con el primer mensaje del técnico |
 | `PATCH` | `/api/conversaciones/:id/control` (`{accion:"tomar"\|"liberar"}`) | Handoff: técnico toma o devuelve la conversación a la IA |
+| `GET` | `/api/conversaciones/:id/mensajes` | Mensajes + `controladoPor` de una conversación — usado por el poll de auto-refresh del visor |
 | `POST` | `/api/conversaciones/:id/mensajes` | Mensaje manual del técnico — se persiste y se manda por Telegram |
 | `GET` | `/api/preot?vehiculoId=` | Lista Pre-OTs |
 | `POST` | `/api/preot` | Genera una Pre-OT manualmente (hipótesis + herramientas ya calculadas) |
@@ -140,6 +150,8 @@ Todo el sistema de diseño (colores, tipografías, sombras, animaciones) vive en
 | `PATCH` | `/api/preot/:id` (`{accion:"aprobar",...}`) | Aprueba la Pre-OT: crea la `OrdenTrabajo` real y actualiza el vehículo, todo en una transacción |
 | `POST` | `/api/webhooks/telegram` | Entrada real del cliente — Telegram manda acá cada `Update` |
 
-Todos devuelven errores con `{ error: string }` y status HTTP apropiado
-(`400` validación, `404` no encontrado, `409` conflicto/duplicado, `500` error
-interno) — ver `lib/api-helpers.ts`.
+Todas (salvo `/api/webhooks/telegram`, que se autentica con
+`TELEGRAM_WEBHOOK_SECRET`) requieren sesión — sin ella devuelven `401`.
+Todos los errores tienen forma `{ error: string }` con status HTTP apropiado
+(`400` validación, `401` sin sesión, `404` no encontrado, `409`
+conflicto/duplicado, `500` error interno) — ver `lib/api-helpers.ts`.

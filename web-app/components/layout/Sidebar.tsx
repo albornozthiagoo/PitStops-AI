@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { HexLogo } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
@@ -88,8 +89,9 @@ export function Sidebar() {
 
       <div className="flex-1" />
 
-      <Link
-        href="/login"
+      <button
+        type="button"
+        onClick={() => signOut({ callbackUrl: "/login" })}
         aria-label="Cerrar sesión"
         title="Cerrar sesión"
         className="w-12 h-12 flex items-center justify-center clip-btn text-titanium-300 hover:text-text-hi hover:bg-steel-800 transition-colors"
@@ -99,7 +101,7 @@ export function Sidebar() {
           <polyline points="16 17 21 12 16 7" />
           <line x1="21" y1="12" x2="9" y2="12" />
         </svg>
-      </Link>
+      </button>
     </nav>
   );
 }
