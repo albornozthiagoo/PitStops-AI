@@ -67,6 +67,16 @@ export default function LoginPage() {
           Usuario: <span className="text-text-hi">tecnico.garcia</span>
           <br />
           Contraseña: <span className="text-text-hi">tecnico-garcia123</span>
+          <br />
+          Bot:{" "}
+          <a
+            href="http://t.me/PitStoppAI_bot"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-text-hi hover:text-action-orange underline underline-offset-2"
+          >
+            t.me/PitStoppAI_bot
+          </a>
         </div>
 
         <form onSubmit={handleSubmit}>
