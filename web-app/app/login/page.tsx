@@ -61,6 +61,14 @@ export default function LoginPage() {
           </div>
         </div>
 
+        <div className="mb-5 border border-dashed border-line-soft bg-graphite-800/60 px-3 py-2.5 font-mono text-[11px] leading-relaxed text-text-lo">
+          <span className="text-action-orange">MVP · acceso de prueba</span>
+          <br />
+          Usuario: <span className="text-text-hi">tecnico.garcia</span>
+          <br />
+          Contraseña: <span className="text-text-hi">tecnico-garcia123</span>
+        </div>
+
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <FieldLabel htmlFor="f-user">Usuario / legajo</FieldLabel>

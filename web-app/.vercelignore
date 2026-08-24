@@ -1,0 +1,10 @@
+# El deploy se hace desde web-app/ como raíz, que no tiene su propio .git
+# (vive dentro del repo monorepo) — sin este archivo, la CLI de Vercel no
+# detecta el .gitignore del repo y sube todo tal cual está en disco,
+# incluido .env con secretos en texto plano (DB, API keys, AUTH_SECRET).
+.env
+.env.local
+.env*.local
+generated
+node_modules
+.next

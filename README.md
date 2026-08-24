@@ -23,6 +23,22 @@ conversación y la IA se hace a un lado.
 > Anteproyecto completo (problema, propuesta de valor, cronograma, riesgos):
 > [`docs/Anteproyecto PitStop AI.pdf`](docs/Anteproyecto%20PitStop%20AI.pdf)
 
+## Acceso rápido
+
+<p align="center">
+  <a href="https://pitstops-ai.vercel.app/login">
+    <img src="web-app/public/QR.jpeg" alt="QR de acceso al panel de PitStops AI" width="180">
+  </a>
+  <br>
+  <sub>Escaneá para abrir el panel del taller (deploy en Vercel)</sub>
+</p>
+
+<p align="center">
+  <a href="http://t.me/PitStoppAI_bot">
+    <img src="https://img.shields.io/badge/Telegram-Hablar%20con%20el%20bot-26A5E4?logo=telegram&logoColor=white&style=for-the-badge" alt="Hablar con el bot de Telegram">
+  </a>
+</p>
+
 ## Ejemplo de uso
 
 ```
@@ -38,8 +54,6 @@ IA:      Cuando giras la llave, ¿qué sucede?
 
 Resultado → **Pre-OT #1482**: Gol Trend 2018 · hace clic al arrancar · urgencia
 media · posible causa: batería descargada · ~15 min · herramienta: multímetro.
-
-Bot Telegram: [`PitStops AI - BOT`](http://t.me/PitStoppAI_bot)
 
 ## Stack
 
@@ -100,6 +114,5 @@ se refresca el dashboard) y pulido general de UI/UX.
 | Visor de conversación en vivo (auto-refresh)                        | Sí                                   |
 | Árbol dinámico de preguntas por tipo de avería                      | Sí                                   |
 | Autenticación real (NextAuth + Argon2id, rutas protegidas)          | Sí                                   |
-| Notificación automática al técnico al generar la Pre-OT             | No (sin n8n; se resolvería sin él)   |
 | Reconocimiento de fotos                                             | No (evolución futura)                |
 | Análisis de audio del motor                                         | No (evolución futura)                |
