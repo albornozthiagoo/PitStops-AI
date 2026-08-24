@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "next dev -H localhost",
     "dev:quiet": "node scripts/dev-quiet.mjs",
-    "build": "next build",
+    "postinstall": "prisma generate",
+    "build": "prisma migrate deploy && next build",
     "start": "next start",
     "lint": "next lint",
     "db:migrate": "prisma migrate dev",
