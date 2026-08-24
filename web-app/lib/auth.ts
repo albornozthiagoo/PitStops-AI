@@ -33,10 +33,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new DemasiadosIntentos();
         }
 
-        const tecnico = await prisma.tecnico.findUnique({
+        // El primer query contra una función recién arrancada en Vercel a
+        // veces devuelve vacío por un cold-start del pooler de Supabase
+        // (conexión nueva que todavía no "ve" los datos) aunque el registro
+        // exista — confirmado en prod: el mismo query, repetido de
+        // inmediato, siempre encuentra el técnico. Un solo reintento
+        // resuelve esto sin esconder un legajo genuinamente inexistente
+        // (ese caso sigue devolviendo null las dos veces).
+        let tecnico = await prisma.tecnico.findUnique({
           where: { legajo },
           include: { taller: true },
         });
+        if (!tecnico) {
+          tecnico = await prisma.tecnico.findUnique({
+            where: { legajo },
+            include: { taller: true },
+          });
+        }
 
         // Si el legajo no existe, igual corremos un verify() contra un hash
         // dummy antes de devolver null — así el tiempo de respuesta no
